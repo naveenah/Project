@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <h1>{{ page_title }}</h1>
+
+        {% block content%}
+            {% if request.user.is_authenticated %}
+            <p>"Welcome user"</p>
+            {% else %}
+            <p>"You are not valid user"</p>
+            {% endif %}
+        {% endblock content%}
+    </body>
+</html>
