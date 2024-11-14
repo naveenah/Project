@@ -1,1 +1,1 @@
-web: gunicorn 'genapp.wsgi'
+web: gunicorn './src/genapp.wsgi'
