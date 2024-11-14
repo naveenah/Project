@@ -30,7 +30,7 @@ ALLOWED_HOSTS = [
 ]
 
 if DEBUG:
-    ALLOWED_HOSTS = [
+    ALLOWED_HOSTS += [
         "127.0.0.1",
         "localhost"
     ]
