@@ -3,4 +3,6 @@
 {% block content%}
     <p>"This is home page"</p>
     {{ block.super }}
+    Page Visits: {{ page_visit_count }}
+    Total Visits: {{ total_page_visit}}
 {% endblock content%}
