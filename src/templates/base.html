@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html>
     <body>
-        <h1>{{ page_title }}</h1>
+        <h1>
+            {% include 'nav/navbar.html' %}
+            {{ page_title }}
+            {% include 'base/css.html' %}
+        </h1>
 
         {% block content%}
             {% if request.user.is_authenticated %}
+            {% include 'base/js.html' %}
             <p>"Welcome user"</p>
             {% else %}
             <p>"You are not valid user"</p>
