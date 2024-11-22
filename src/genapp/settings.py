@@ -150,7 +150,7 @@ STATICFILES_DIR = [
     STATICFILES_BASE_DIR
 ]
 
-# sources to copy to as local cdn
+# output to copy to as local cdn
 STATIC_ROOT = BASE_DIR / "local-cdn"
 
 # Default primary key field type
