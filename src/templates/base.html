@@ -3,6 +3,7 @@
     <body>
         <h1>
             {% include 'nav/navbar.html' %}
+            {% include 'base/messages.html' with messages=messages %}
             {{ page_title }}
             {% include 'base/css.html' %}
         </h1>
