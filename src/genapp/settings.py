@@ -50,7 +50,7 @@ SECRET_KEY = config("DJANGO_SECRET_KEY")
 DEBUG = config("DJANGO_DEBUG")
 
 ALLOWED_HOSTS = [
-    ".railway.app" # The production host
+    "https://project-production-1714.up.railway.app" # The production host
 ]
 
 if DEBUG:
