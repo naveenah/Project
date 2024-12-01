@@ -24,7 +24,7 @@ urlpatterns = [
     path("hello-world/", home_view),
     path("login/", auth_views.login_view),
     path("register/", auth_views.register_view),
-    path('account/', include('allauth.urls')),
+    path('accounts/', include('allauth.urls')),
     path("admin/", admin.site.urls),
     path("about/", about_view),
 ]
