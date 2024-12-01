@@ -59,7 +59,7 @@ if DEBUG:
         "localhost"
     ]
 if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = [ 'https://project-production-ee1f.up.railway.app' ]
+    CSRF_TRUSTED_ORIGINS = [ 'https://project-production-1714.up.railway.app' ]
                             
 # Application definition
 
