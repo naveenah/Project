@@ -58,7 +58,9 @@ if DEBUG:
         "127.0.0.1",
         "localhost"
     ]
-
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = [ 'https://project-production-ee1f.up.railway.app' ]
+                            
 # Application definition
 
 INSTALLED_APPS = [
