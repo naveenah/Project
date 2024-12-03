@@ -58,7 +58,8 @@ if DEBUG:
         "127.0.0.1",
         "localhost"
     ]
-else:    
+
+if not DEBUG:
     CSRF_TRUSTED_ORIGINS = [ 'https://*.railway.app' ]
                             
 # Application definition
