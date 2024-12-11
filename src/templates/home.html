@@ -1,5 +1,9 @@
 {% extends 'base.html'%}
 
+{% block head_title %}
+    {{ page_title }} - {{ block.super }}
+{% endblock head_title %}
+
 {% block content%}
     <p>"This is home page"</p>
     {{ block.super }}
