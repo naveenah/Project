@@ -5,8 +5,8 @@
 {% endblock head_title %}
 
 {% block content%}
+    <h1 class="text-lg font-medium">{{ page_title }}</h1>
     <p>"This is home page"</p>
-    {{ block.super }}
 
     {% include 'snippets/welcome-user-msg.html' %}
 
