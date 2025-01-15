@@ -20,6 +20,7 @@ class Subscription(models.Model):
     Subscription Product Model = Stripe Product
     """
     name = models.CharField(max_length=120)
+    subtitle = models.TextField(blank=True, null=True)
     active = models.BooleanField(default=True)
     groups = models.ManyToManyField(Group)
     permissions = models.ManyToManyField(Permission, 
@@ -29,12 +30,23 @@ class Subscription(models.Model):
         }
     )
     stripe_id = models.CharField(max_length=120, null=True, blank=True)
+    order = models.IntegerField(default=-1, help_text='Ordering on django pricing page')
+    featured = models.BooleanField(default=True, help_text = 'Featured on django pricing page')
+    updated = models.DateTimeField(auto_now=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    features = models.TextField(help_text="Pricing seperated by new line",blank=True, null=True)
 
     def __str__(self):
         return f"{self.name}"
 
     class Meta:
         permissions= SUBSCRIPTION_PERMISSION
+        ordering = ['order', 'featured','-updated']
+
+    def get_features_as_list(self):
+        if not self.features:
+            return []
+        return [x.strip() for x in self.features.split("\n")]    
 
     def save(self, *args, **kwargs):
         if not self.stripe_id:
@@ -63,6 +75,31 @@ class SubscriptionPrice(models.Model):
                                 choices=IntervalChoices.choices,
                                 )
     price = models.DecimalField(max_digits=10, decimal_places=2, default=99.99)
+    order = models.IntegerField(default=-1, help_text='Ordering on django pricing page')
+    featured = models.BooleanField(default=True, help_text = 'Featured on django pricing page')
+    updated = models.DateTimeField(auto_now=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['subscription__order','order', 'featured','-updated']
+
+    @property
+    def display_features_list(self):
+        if not self.subscription:
+            return []
+        return self.subscription.get_features_as_list()    
+
+    @property
+    def display_sub_name(self):
+        if not self.subscription:
+            return "Plan"
+        return self.subscription.name    
+    
+    @property
+    def display_sub_subtitle(self):
+        if not self.subscription:
+            return "Plan"
+        return self.subscription.subtitle    
     
     @property
     def stripe_price(self):
@@ -99,6 +136,12 @@ class SubscriptionPrice(models.Model):
             self.stripe_id = stripe_id 
 
         super().save(*args,**kwargs)
+        if self.featured and self.subscription:
+            qs = SubscriptionPrice.objects.filter(
+                subscription = self.subscription,
+                interval=self.interval
+            ).exclude(id=self.id)
+            qs.update(featured=False)
 
 class UserSubscription(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
