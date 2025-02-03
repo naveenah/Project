@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import Group, Permission
 from django.conf import settings
 from django.db.models.signals import post_save
+from django.urls import reverse
 
 User = settings.AUTH_USER_MODEL
 ALLOW_CUSTOM_GROUPS=True
@@ -83,6 +84,9 @@ class SubscriptionPrice(models.Model):
     class Meta:
         ordering = ['subscription__order','order', 'featured','-updated']
 
+    def get_checkout_url(self):
+        return reverse("sub-price-checkout", kwargs={"price_id": self.id})
+
     @property
     def display_features_list(self):
         if not self.subscription:
@@ -143,10 +147,90 @@ class SubscriptionPrice(models.Model):
             ).exclude(id=self.id)
             qs.update(featured=False)
 
+class SubscriptionStatus(models.TextChoices):
+        ACTIVE = 'active', 'ACTIVE'
+        TRAILING = 'trailing', 'TRAILING'
+        INCOMPLETE = 'incomplete','INCOMPLETE'
+        INCOMPLETE_EXPIRED = 'incomplete_expired', 'INCOMPLETE_EXPIRED'
+        PAST_DUE = 'past_due','PAST_DUE'
+        CANCELLED = 'cancelled','CANCELLED'
+        UNPAID = 'unpaid','UNPAID'
+        PAUSED = 'paused','PAUSED'
+
 class UserSubscription(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    subscription =  models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True)
+    subscription =  models.ForeignKey(
+        Subscription, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
+        )
+    stripe_id = models.CharField(max_length=120, null=True, blank=True)
     active = models.BooleanField(default=True)
+    user_cancelled = models.BooleanField(default=False)
+    original_period_start = models.DateTimeField(
+        auto_now=False, 
+        auto_now_add=False, 
+        blank=True, 
+        null=True
+        )
+    current_period_start = models.DateTimeField(
+        auto_now=False, 
+        auto_now_add=False, 
+        blank=True, 
+        null=True
+        )
+    current_period_end = models.DateTimeField(
+        auto_now=False, 
+        auto_now_add=False, 
+        blank=True, 
+        null=True
+        )     
+    status = models.CharField(
+        max_length=20, 
+        choices=SubscriptionStatus.choices, 
+        null=True, 
+        blank=True)
+    calncel_at_period_end = models.BooleanField(default=False)
+    
+    def get_absolute_url(self):
+        return reverse("user_subscription")
+    
+    def get_cancel_url(self):
+        return reverse("user_subscription_cancel")
+    
+    @property
+    def plan_name(self):
+        if not self.subscription:
+            return None
+        return self.subscription.name
+    
+    @property
+    def is_active_status(self):
+        return self.status in [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRAILING]
+    
+    def serialize(self):
+        return {
+            "plan_name": self.plan_name,
+            "status": self.status,
+            "current_period_start": self.current_period_start,
+            "current_period_end": self.current_period_end,
+        }
+    
+    @property
+    def billing_cycle_anchor(self):
+        """
+        https://docs.stripe.com/payments/checkout/billing-cycle
+        Optional delay to start new subscription in Stripe checkout
+        """
+        if not self.current_period_end:
+            return None
+        return int(self.current_period_end.timestamp())
+    
+    def save(self, *args, **kwargs):
+        if(self.original_period_start is None and self.current_period_start is not None):
+            self.original_period_start = self.current_period_start
+        super().save(*args, **kwargs)
 
 def user_sub_post_save(sender, instance, *args, **kwargs):
     user_sub_instance = instance 
@@ -155,17 +239,17 @@ def user_sub_post_save(sender, instance, *args, **kwargs):
     groups_ids = []
     if subscription_obj is not None:
         groups = subscription_obj.groups.all()
-        groups_ids = groups.value_list('groups_id', flat=True)
+        groups_ids = groups.values_list('id', flat=True)
     if not ALLOW_CUSTOM_GROUPS:
-        user.groups.set(groups)
+        user.groups.set(groups_ids)
     else:
         subs_qs = Subscription.objects.filter(active=True)
         if subscription_obj is not None:
-            sub_qs = sub_qs.exclude(id=subscription_obj.id)
-        sub_groups = subs_qs.value_list('groups__id', flat=True)
+            subs_qs = subs_qs.exclude(id=subscription_obj.id)
+        sub_groups = subs_qs.values_list('groups__id', flat=True)
         sub_groups_set = set(sub_groups)
-        current_groups = user.groups.all().value_list('id', flat=True)
-        group_ids_set = set(group_ids)
+        current_groups = user.groups.all().values_list('id', flat=True)
+        group_ids_set = set(groups_ids)
         current_groups_set = set(current_groups) - sub_groups_set
         final_group_ids = list(group_ids_set | current_groups_set)
         user.groups.set(final_group_ids)
