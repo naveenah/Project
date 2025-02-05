@@ -48,6 +48,7 @@ SECRET_KEY = config("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DJANGO_DEBUG")
+BASE_URL = config("BASE_URL", default=None)
 
 ALLOWED_HOSTS = [
     ".railway.app" # The production host
@@ -73,9 +74,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # My apps
     'commando',
+    'customers',
     'profiles',
     'subscriptions',
     'visits',
+    'checkouts',
     # Third party apps
     'allauth_ui',
     'allauth',
