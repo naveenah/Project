@@ -3,23 +3,33 @@ from django.db.models import Q
 from customers.models import Customer
 from subscriptions.models import Subscription, UserSubscription, SubscriptionStatus
 
-def refresh_active_users_subscriptions(user_ids=None):
+def refresh_active_users_subscriptions(
+        user_ids=None, 
+        active_only=True,
+        days_left=0,
+        days_ago=0,
+        day_start=0,
+        day_end=0,
+        verbose=False):
     
-    active_qs_lookup = (
-        Q(SubscriptionStatus.ACTIVE) | 
-        Q(SubscriptionStatus.TRAILING)
-    )
-    qs = UserSubscription.objects.filter(active_qs_lookup)
-    if isinstance(user_ids,list):
-        qs= qs.fitler(user_id__in=user_ids)
-    elif isinstance(user_ids, int):
-        qs = filter(user_ids__in=[user_ids])
-    elif isinstance(user_ids, str):
-        qs = filter(user_ids__in=[user_ids])    
+    qs = UserSubscription.objects.all()
+
+    if active_only:
+        qs = qs.by_active_trialing()
+    if user_ids is not None:
+        qs = qs.by_user_ids(user_ids=user_ids)
+    if days_ago > 0:
+        qs = qs.by_days_ago(days_ago=days_ago)
+    if days_left > 0:
+        qs = qs.by_days_left(days_left=days_left)
+    if day_start > 0 and day_end > 0:
+        qs = qs.by_range(days_start=day_start, days_end=day_end)
 
     complete_count = 0
     qs_count = qs.count()
     for obj in qs:
+        if verbose:
+            print("updating user", obj.user, obj.subscription, obj.current_period_end)
         if obj.stripe_id:    
             sub_data = helpers.billing.get_subscription(obj.stripe_id, raw=False)
             for k,v in sub_data.items():
