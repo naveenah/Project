@@ -1,9 +1,12 @@
-name: 1 - Hello World Github actions
+name: 1 - Hello World GitHub actions
 
 on:
-  #push: # git push
-  #  branch:
-  #    -main
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '30 15 * * *'
+  # push: # git push
+  #   branches:
+  #     - main
 
 jobs:
   hello:
