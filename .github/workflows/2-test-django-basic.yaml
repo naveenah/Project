@@ -2,9 +2,9 @@ name: 2 - Test Django Basic
 
 on:
   workflow_dispatch:
-  #push: 
-  #  branch:
-  #    -main
+  # push:
+  #   branches:
+  #     - main
 
 jobs:
   test:
@@ -15,12 +15,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.12' 
       - name: Install Requirements
         run: |
           python -m pip install pip --upgrade
           python -m pip install -r requirements.txt
-      -name: Django Tests
+      - name: Django Tests
         working-directory: ./src
         run: |
-          python manage.py test        
+          python manage.py test
