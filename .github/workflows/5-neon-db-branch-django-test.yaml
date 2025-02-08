@@ -53,4 +53,8 @@ jobs:
       -name: Django Tests
         working-directory: ./src
         run: |
-          python manage.py test        
+          python manage.py test
+      - name: Clean Up step
+        continue-on-error: true
+        run: |
+          neonctl branches delete "${{ env.NEON_GITHUB_BRANCH }}" --project-id "${{ env.NEON_PROJECT_ID }}"
