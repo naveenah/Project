@@ -1,9 +1,9 @@
 name: 1 - Hello World Github actions
 
 on:
-  push: # git push
-    branch:
-      -main
+  #push: # git push
+  #  branch:
+  #    -main
 
 jobs:
   hello:
