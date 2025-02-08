@@ -1,10 +1,10 @@
-name: 4 - Test Django Basic with Actions Secret Database URL
+name: 4 - Test Django with Actions Secret Database URL
 
 on:
   workflow_dispatch:
-  #push: 
-  #  branch:
-  #    -main
+  # push:
+  #   branches:
+  #     - main
 
 jobs:
   test:
@@ -12,19 +12,19 @@ jobs:
     env:
       DJANGO_DEBUG: 0
       DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
-      #DJANGO_SECRET_KEY: not-good
+      # DJANGO_SECRET_KEY: not-good
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.12' 
       - name: Setup Django Secret Key
         run: |
           MY_GEN_KEY=$(openssl rand -base64 32)
           echo "DJANGO_SECRET_KEY=$MY_GEN_KEY" >> $GITHUB_ENV
-      - name: show DATABASE_URL
+      - name: Show DATABASE_URL
         run: |
           echo ${{ env.DATABASE_URL }}
           echo $DATABASE_URL
@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m pip install pip --upgrade
           python -m pip install -r requirements.txt
-      -name: Django Tests
+      - name: Django Tests
         working-directory: ./src
         run: |
-          python manage.py test        
+          python manage.py test
