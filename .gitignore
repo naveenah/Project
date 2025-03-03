@@ -1,6 +1,6 @@
 # Ignore static files
 src/staticfiles
-local-cdn
+#local-cdn
 
 .DS_Store
 venv/
