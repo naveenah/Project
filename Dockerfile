@@ -47,7 +47,7 @@ ARG DJANGO_SECRET_KEY
 ENV DJANGO_SECRET_KEY={"DJANGO_SECRET_KEY"}
 
 ARG DJANGO_DEBUG=0
-ENV DJANGO_DEBUG={"DJANGO_DEBUG"}
+ENV DJANGO_DEBUG=${"DJANGO_DEBUG"}
 # database isn't available during build
 # run any other commands that do not need the database
 # such as:
