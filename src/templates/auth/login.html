@@ -4,7 +4,7 @@
 
 
 {% block content %}
-<form method="POST" path="login\">
+<form method="POST" path="/login/">
     {% csrf_token %}
     <input type="text" name="username" placeholder="User Name">
     <input type="password" name="password" placeholder="Your Password">

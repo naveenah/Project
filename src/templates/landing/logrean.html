@@ -1,0 +1,110 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Staffing Solutions - [Your SaaS Name]</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .feature-card {
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+        .pagination-button {
+            transition: background-color 0.3s ease;
+        }
+        .pagination-button:hover {
+            background-color: #e2e8f0;
+        }
+        .pagination-active {
+            background-color: #d1d5db;
+        }
+    </style>
+</head>    
+<body class="bg-gray-100">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AI Agent for Staffing - Logrean</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+            body { font-family: 'Poppins', sans-serif; }
+            .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+        </style>
+    </head>
+    <section class="gradient-bg py-24 text-white">
+        <div class="container mx-auto px-6 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">Unlock the Future of Staffing with AI</h1>
+            <p class="text-lg md:text-xl mb-8">Effortlessly find top talent, streamline your processes, and accelerate growth with our intelligent AI-powered staffing agents.</p>
+            <a href="{% url 'account_signup' %}" class="bg-white text-indigo-600 px-8 py-3 rounded-full text-lg font-semibold hover:bg-gray-100">Get Started Free</a>
+        </div>
+    </section>
+
+    <section id="features" class="py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-semibold text-center text-gray-800 mb-16">Powerful AI Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div class="text-center">
+                    <img src="{% static 'images/creative.png' %}" alt="AI Sourcing" class="mx-auto mb-6 h-20">
+                    <h3 class="text-xl font-semibold mb-3">AI-Powered Sourcing</h3>
+                    <p class="text-gray-600">Intelligent algorithms scan vast databases to identify and engage the best candidates.</p>
+                </div>
+                <div class="text-center">
+                    <img src="{% static 'images/team-building.png' %}" alt="Smart Matching" class="mx-auto mb-6 h-20">
+                    <h3 class="text-xl font-semibold mb-3">Smart Candidate Matching</h3>
+                    <p class="text-gray-600">Accurate matching based on skills, experience, and cultural fit, saving you time and effort.</p>
+                </div>
+                <div class="text-center">
+                    <img src="{% static 'images/email.png' %}" alt="Automated Communication" class="mx-auto mb-6 h-20">
+                    <h3 class="text-xl font-semibold mb-3">Automated Communication</h3>
+                    <p class="text-gray-600">Seamlessly manage candidate interactions with automated outreach and scheduling.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="benefits" class="bg-gray-50 py-20">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl font-semibold text-center text-gray-800 mb-16">Transform Your Staffing Operations</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <img src="{% static 'images/teamwork.png' %}" alt="Team Collaboration" class="w-full rounded-lg shadow-lg">
+                </div>
+                <div class="space-y-6">
+                    <div class="flex items-start">
+                        <img src="{% static 'images/startup.png' %}" alt="Rocket" class="mr-4 h-8 text-indigo-600">
+                        <div>
+                            <h3 class="text-lg font-semibold">Accelerate Time-to-Hire</h3>
+                            <p class="text-gray-600">Fill positions faster and stay ahead of the competition with our AI-driven efficiency.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <img src="{% static 'images/performance-metrics.png' %}" alt="Chart" class="mr-4 h-8 text-indigo-600">
+                        <div>
+                            <h3 class="text-lg font-semibold">Boost Productivity</h3>
+                            <p class="text-gray-600">Free up your team to focus on strategic initiatives by automating repetitive tasks.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <img src="{% static 'images/reduction.png' %}" alt="Shield" class="mr-4 h-8 text-indigo-600">
+                        <div>
+                            <h3 class="text-lg font-semibold">Reduce Costs</h3>
+                            <p class="text-gray-600">Optimize resource allocation and minimize recruitment expenses with our cost-effective solutions.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>

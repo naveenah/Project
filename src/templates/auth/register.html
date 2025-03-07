@@ -4,7 +4,7 @@
 
 
 {% block content %}
-<form method="POST" action="\register\">
+<form method="POST" action="/register/">
     {% csrf_token %}
     <input type="text" name="username" placeholder="Pick User Name">
     <input type="text" name="email" placeholder="Enter Email Address">
