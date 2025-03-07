@@ -1,3 +1,4 @@
+{% load static %}
 <nav class="bg-white border-b border-gray-200 px-4 py-2.5 dark:bg-gray-800 dark:border-gray-700 fixed left-0 right-0 top-0 z-50">
     <div class="flex flex-wrap justify-between items-center">
       <div class="flex justify-start items-center">
@@ -36,7 +37,8 @@
           <span class="sr-only">Toggle sidebar</span>
         </button>
         <a href="{% url 'home' %}" class="flex items-center justify-between mr-4">
-          <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">SaaS</span>
+            <img src="{% static 'images/ai.png' %}" alt="Logo" class="h-8 inline-block mr-2">  
+          <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Logrean</span>
         </a>
         <form action="#" method="GET" class="hidden">
           <label for="topbar-search" class="sr-only">Search</label>
@@ -569,8 +571,7 @@
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
+                xmlns="http://www.w3.org/2000/svg">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
