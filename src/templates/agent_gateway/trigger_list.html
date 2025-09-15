@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+<head>
+    <title>Agent Triggers</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+{% block content %}
+<body>
+    <h1>Agent Triggers</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Prompt Pattern</th>
+                <th>Scheduled Time</th>
+                <th>Periodic Interval</th>
+                <th>Last Triggered</th>
+                <th>Active</th>
+                <th>Action Payload</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trigger in triggers %}
+            <tr>
+                <td>{{ trigger.name }}</td>
+                <td>{{ trigger.get_trigger_type_display }}</td>
+                <td>{{ trigger.prompt_pattern|default_if_none:"" }}</td>
+                <td>{{ trigger.scheduled_time|default_if_none:"" }}</td>
+                <td>{{ trigger.periodic_interval|default_if_none:"" }}</td>
+                <td>{{ trigger.last_triggered|default_if_none:"" }}</td>
+                <td>{{ trigger.active }}</td>
+                <td>{{ trigger.action_payload }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8">No triggers found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Create new trigger (Example form, requires modification)</h2>
+    <form method="post" action="{% url 'create_trigger' %}">
+        {% csrf_token %}
+        <label for="name">Name:</label>
+        <input type="text" name="name" id="name" required><br><br>
+
+        <label for="trigger_type">Trigger Type:</label>
+        <select name="trigger_type" id="trigger_type" required>
+            <option value="prompt">Prompt</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="periodic">Periodic</option>
+        </select><br><br>
+
+        <label for="prompt_pattern">Prompt Pattern:</label>
+        <input type="text" name="prompt_pattern" id="prompt_pattern"><br><br>
+
+        <label for="scheduled_time">Scheduled Time:</label>
+        <input type="datetime-local" name="scheduled_time" id="scheduled_time"><br><br>
+
+        <label for="periodic_interval">Periodic Interval (days HH:MM:SS):</label>
+        <input type="text" name="periodic_interval" id="periodic_interval"><br><br>
+
+        <label for="action_payload">Action Payload (JSON):</label>
+        <textarea name="action_payload" id="action_payload"></textarea><br><br>
+
+        <label for="active">Active:</label>
+        <input type="checkbox" name="active" id="active" checked><br><br>
+
+        <button type="submit">Create Trigger</button>
+    </form>
+</body>
+
+
+{% endblock content %}

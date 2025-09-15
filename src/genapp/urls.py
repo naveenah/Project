@@ -20,6 +20,8 @@ from auth import views as auth_views
 from checkouts import views as checkout_views
 from landing import views as landing_views
 from subscriptions import views as subscriptions_views
+from ai_agent_gateway import views as agent_view
+
 from .views import (
     home_view, 
     about_view, 
@@ -47,6 +49,9 @@ urlpatterns = [
     path('protected/user-only', user_only_view),
     path('protected/staff-only', staff_only_view),
     path('profiles/', include('profiles.urls')),
+    path('prompt/', agent_view.handle_prompt, name='handle_prompt'),
+    path('triggers/', agent_view.trigger_list, name='trigger_list'),
+    path('triggers/create/', agent_view.create_trigger, name='create_trigger'),
     path("admin/", admin.site.urls),
     path("about/", about_view),
 ]
