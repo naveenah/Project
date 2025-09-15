@@ -1,0 +1,123 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent for Staffing Consultancy - Logrean</title>
+    <link rel="stylesheet" href="{% static 'css/landing.css' %}">  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+    <header class="bg-white shadow">
+        <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+            <a href="/" class="text-2xl font-semibold text-indigo-600">Logrean</a>
+            <nav class="space-x-4">
+                <a href="#features" class="text-gray-600 hover:text-indigo-600">Features</a>
+                <a href="#benefits" class="text-gray-600 hover:text-indigo-600">Benefits</a>
+                <a href="#pricing" class="text-gray-600 hover:text-indigo-600">Pricing</a>
+                <a href="#contact" class="text-gray-600 hover:text-indigo-600">Contact</a>
+                <a href="/login" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="bg-gradient-to-r from-indigo-100 to-blue-100 py-20">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-6">Revolutionize Your Staffing with AI-Powered Agents</h1>
+            <p class="text-lg text-gray-700 mb-8">Automate recruitment, streamline processes, and find the perfect candidates faster than ever with our intelligent AI agents.</p>
+            <a href="#get-started" class="bg-indigo-600 text-white px-8 py-3 rounded-full text-lg hover:bg-indigo-700">Get Started Free</a>
+        </div>
+    </section>
+
+    <section id="features" class="py-16">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-semibold text-center text-gray-800 mb-12">Key Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <img src="{% static 'images/user.svg' %}" alt="Automation" class="mx-auto mb-4 h-16"> <h3 class="text-xl font-semibold mb-2">Automated Candidate Sourcing</h3>
+                    <p class="text-gray-600">Our AI agents scan multiple platforms to identify and engage top talent automatically.</p>
+                </div>
+                <div class="text-center">
+                    <img src="{% static 'images/arrows-down-to-people.svg' %}" alt="Matching" class="mx-auto mb-4 h-16"> <h3 class="text-xl font-semibold mb-2">Intelligent Candidate Matching</h3>
+                    <p class="text-gray-600">Advanced algorithms match candidates to job requirements with unparalleled accuracy.</p>
+                </div>
+                <div class="text-center">
+                    <img src="{% static 'images/interpersonal-skill.svg' %}" alt="Communication" class="mx-auto mb-4 h-16"> <h3 class="text-xl font-semibold mb-2">Seamless Communication</h3>
+                    <p class="text-gray-600">Automate initial outreach, scheduling interviews, and providing feedback to candidates.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="benefits" class="bg-gray-50 py-16">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-semibold text-center text-gray-800 mb-12">Benefits for Your Staffing Consultancy</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <img src="{% static 'images/gauge-circle-bolt.svg' %}" alt="Speed" class="mr-4 h-8"> <div>
+                            <h3 class="text-lg font-semibold">Increased Placement Speed</h3>
+                            <p class="text-gray-600">Fill positions faster and reduce time-to-hire with AI-driven efficiency.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <img src="{% static 'images/efficiency.svg' %}" alt="Efficiency" class="mr-4 h-8"> <div>
+                            <h3 class="text-lg font-semibold">Improved Operational Efficiency</h3>
+                            <p class="text-gray-600">Automate repetitive tasks and free up your team to focus on strategic initiatives.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <img src="{% static 'images/cost.svg' %}" alt="Cost" class="mr-4 h-8"> <div>
+                            <h3 class="text-lg font-semibold">Reduced Costs</h3>
+                            <p class="text-gray-600">Minimize recruitment expenses and optimize resource allocation.</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <img src="{% static 'images/staffing-team.svg' %}" alt="Staffing Team" class="w-full rounded-lg"> </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="pricing" class="py-16">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-semibold text-center text-gray-800 mb-12">Pricing Plans</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-white rounded-lg shadow p-6 text-center">
+                    <h3 class="text-2xl font-semibold mb-4">Basic</h3>
+                    <p class="text-4xl font-bold text-indigo-600">$99/month</p>
+                    <ul class="mt-6 space-y-2">
+                        <li>Limited AI Agent Access</li>
+                        <li>Basic Candidate Sourcing</li>
+                        <li>Email Support</li>
+                    </ul>
+                    <a href="#" class="mt-8 bg-indigo-600 text-white px-6 py-3 rounded-full hover:bg-indigo-700 block">Get Started</a>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6 text-center">
+                    <h3 class="text-2xl font-semibold mb-4">Pro</h3>
+                    <p class="text-4xl font-bold text-indigo-600">$299/month</p>
+                    <ul class="mt-6 space-y-2">
+                        <li>Full AI Agent Access</li>
+                        <li>Advanced Matching</li>
+                        <li>Priority Support</li>
+                    </ul>
+                    <a href="#" class="mt-8 bg-indigo-600 text-white px-6 py-3 rounded-full hover:bg-indigo-700 block">Get Started</a>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6 text-center">
+                    <h3 class="text-2xl font-semibold mb-4">Enterprise</h3>
+                    <p class="text-4xl font-bold text-indigo-600">Contact Us</p>
+                    <ul class="mt-6 space-y-2">
+                        <li>Custom AI Solutions</li>
+                        <li>Dedicated Account Manager</li>
+                        <li>24/7 Support</li>
+                    </ul>
+                    <a href="#contact" class="mt-8 bg-indigo-600 text-white px-6 py-3 rounded-full hover:bg-indigo-700 block">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="bg-indigo-50 py-16">
+        <div

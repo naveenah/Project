@@ -87,6 +87,9 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.github',
     'widget_tweaks',
     'slippers',
+    # Agent Gateway apps
+    'ai_agent_gateway.apps.AgentGatewayConfig',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -210,7 +213,8 @@ STATICFILES_BASE_DIR.mkdir(exist_ok=True, parents=True)
 STATICFILES_VENDOR_DIR = STATICFILES_BASE_DIR / "vendors"
 
 STATICFILES_DIRS = [
-    STATICFILES_BASE_DIR
+    STATICFILES_BASE_DIR,
+    BASE_DIR / "templates",
 ]
 
 # output to copy to as local cdn
@@ -227,3 +231,10 @@ STORAGES = {
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0' # Or your message broker
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC' # Or your timezone
