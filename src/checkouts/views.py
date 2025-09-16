@@ -13,11 +13,17 @@ BASE_URL = settings.BASE_URL
 
 # Create your views here.
 def product_price_redirect_view(request, price_id=None, *args, **kwargs):
+    """
+    Redirects to the checkout start page with the selected price ID stored in the session.
+    """
     request.session['checkout_subscription_price_id'] = price_id
     return redirect("stripe-checkout-start")
 
 @login_required
 def checkout_redirect_view(request):
+    """
+    Redirects the user to the Stripe checkout page for the selected subscription price.
+    """
     checkout_subscription_price_id = request.session.get("checkout_subscription_price_id")
     try:
         obj = SubscriptionPrice.objects.get(id=checkout_subscription_price_id)
@@ -43,6 +49,10 @@ def checkout_redirect_view(request):
     return redirect(url)
 
 def checkout_finalize_view(request):
+    """
+    Finalizes the checkout process after a successful payment with Stripe.
+    Creates or updates the user's subscription.
+    """
     session_id = request.GET.get('session_id')
     checkout_data = helpers.billing.get_checkout_customer_plan(session_id)
     plan_id = checkout_data.pop('plan_id')
