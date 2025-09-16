@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 from decouple import config
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -79,6 +80,7 @@ INSTALLED_APPS = [
     'subscriptions',
     'visits',
     'checkouts',
+    'landing',
     # Third party apps
     'allauth_ui',
     'allauth',
@@ -213,8 +215,7 @@ STATICFILES_BASE_DIR.mkdir(exist_ok=True, parents=True)
 STATICFILES_VENDOR_DIR = STATICFILES_BASE_DIR / "vendors"
 
 STATICFILES_DIRS = [
-    STATICFILES_BASE_DIR,
-    BASE_DIR / "templates",
+    STATICFILES_BASE_DIR
 ]
 
 # output to copy to as local cdn
@@ -226,6 +227,11 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+if 'test' in sys.argv:
+    STORAGES['staticfiles'] = {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
