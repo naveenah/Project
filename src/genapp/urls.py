@@ -44,6 +44,8 @@ urlpatterns = [
     path("pricing/<str:interval>/", subscriptions_views.subscription_price_view, name="pricing_interval"),
     path('accounts/billing/', subscriptions_views.user_subscription_view,name="user_subscription"),
     path('accounts/billing/cancel', subscriptions_views.user_subscription_cancel_view,name="user_subscription_cancel"),
+    path('login/', auth_views.login_view, name='login'),
+    path('register/', auth_views.register_view, name='register'),
     path('accounts/', include('allauth.urls')),
     path('protected/', pw_protected_view, name='pw_protected'),
     path('protected/user-only', user_only_view, name='user_only'),
