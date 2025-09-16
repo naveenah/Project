@@ -8,9 +8,15 @@ from django.conf import settings
 LOGIN_URL = settings.LOGIN_URL
 
 def home_view(request, *args, **kwargs):
+    """
+    Redirects to the about view.
+    """
     return about_view(request, *args,**kwargs)
 
 def about_view(request, *args, **kwargs):
+    """
+    Displays statistics about page visits.
+    """
     total_qs = PageVisits.objects.all()
     qs = PageVisits.objects.filter(path=request.path)
     try:
@@ -18,8 +24,8 @@ def about_view(request, *args, **kwargs):
     except:
         percent = 0
 
-    _html_template = "home.html"
-    _page_title = "My Home Page!!!"
+    _html_template = "about.html"
+    _page_title = "About Page"
     _html_context = {
         "page_title":_page_title,
         "page_visit_count" : qs.count(),
@@ -32,23 +38,30 @@ def about_view(request, *args, **kwargs):
 VALID_CODE = "abc123"
 
 def pw_protected_view(request, *args, **kwargs):
+    """
+    A view protected by a simple password stored in the session.
+    """
     is_allowed = request.session.get('protected_page_allowed') or 0
-    print(request.session.get('protected_page_allowed'), type(request.session.get('protected_page_allowed')))
     if request.method == "POST":
         user_pw_sent = request.POST.get("code") or None
-        print("code:", user_pw_sent)
         if user_pw_sent == VALID_CODE:
             is_allowed = 1
             request.session['protected_page_allowed'] = is_allowed
     if is_allowed:
-        return render(request, "protected/view.html", {})
+        return render(request, "genapp/protected.html", {})
     
     return render(request, "protected/entry.html", {})
 
 @login_required(login_url=LOGIN_URL)
 def user_only_view(request, *args, **kwargs):
-    return render(request, "protected/user-only.html")
+    """
+    A view that is only accessible to authenticated users.
+    """
+    return render(request, "genapp/user_only.html")
 
 @staff_member_required(login_url=LOGIN_URL)
 def staff_only_view(request, *args, **kwargs):
-    return render(request, "protected/user-only.html")
+    """
+    A view that is only accessible to staff members.
+    """
+    return render(request, "genapp/staff_only.html")

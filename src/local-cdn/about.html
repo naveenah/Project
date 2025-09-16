@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>About Us</h1>
+<p>This is the about page.</p>
+<p>Total page visits: {{ total_page_visit }}</p>
+<p>Visits to this page: {{ page_visit_count }}</p>
+<p>This page accounts for {{ percent|floatformat:2 }}% of all visits.</p>
+{% endblock content %}
