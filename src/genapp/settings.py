@@ -214,6 +214,16 @@ STATICFILES_BASE_DIR = BASE_DIR / "staticfiles"
 STATICFILES_BASE_DIR.mkdir(exist_ok=True, parents=True)
 STATICFILES_VENDOR_DIR = STATICFILES_BASE_DIR / "vendors"
 
+VENDOR_STATICFILES = {
+    "saas-theme.min.css" : "https://raw.githubusercontent.com/codingforentrepreneurs/SaaS-Foundations/260663e36ab9595361e6e31964ac879d116ae599/src/staticfiles/theme/saas-theme.min.css",
+    "flowbite.min.css" : "https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.css",
+    "flowbite.min.js" : "https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js",
+    "flowbite.min.js.map" : "https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js.map",
+}
+
+# output to copy to as local cdn
+STATIC_ROOT = BASE_DIR / "local-cdn"
+
 STATICFILES_DIRS = [
     STATICFILES_BASE_DIR
 ]

@@ -13,7 +13,13 @@ VENDOR_STATICFILES = {
 STATICFILES_VENDOR_DIR = getattr(settings, 'STATICFILES_VENDOR_DIR')
 
 class Command(BaseCommand):
+    """
+    Django command to download vendor static files.
+    """
     def handle(self, *args: Any, **options: Any):
+        """
+        Handles the execution of the command.
+        """
         self.stdout.write("Downloading vendor static files")
 
         completed_urls = []
