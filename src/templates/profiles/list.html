@@ -6,16 +6,10 @@
 
 {% block content%}
     <h1 class="text-lg font-medium">Users</h1>
-    {% if perms.auth %}
-        {% if perms.auth.view_user %}
-            <div>
-                {% for instance in object_list %}
-                    <li><a href="profiles/{{instance.username}}"> {{instance.username}}
-                    </a></li>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div> Permission Denied!!!</div>    
-        {% endif %}
-    {% endif%}
+    <div>
+        {% for instance in object_list %}
+            <li><a href="/profiles/{{instance.username}}"> {{instance.username}}
+            </a></li>
+        {% endfor %}
+    </div>
 {% endblock content%}

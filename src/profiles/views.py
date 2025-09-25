@@ -1,3 +1,7 @@
+"""
+This module contains the views for the profiles app.
+"""
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
@@ -7,6 +11,15 @@ User = get_user_model()
 
 @login_required
 def profile_list_view(request):
+    """
+    Renders a list of active user profiles.
+
+    Args:
+        request: The HTTP request.
+
+    Returns:
+        A rendered HTML response.
+    """
     context = {
         "object_list": User.objects.filter(is_active=True)
     }
@@ -14,7 +27,16 @@ def profile_list_view(request):
 
 @login_required
 def profile_detail_view(request,username=None, *args, **kwargs):
-    ''' This method defines the profile detail view'''
+    """
+    Renders the detail view for a single user profile.
+
+    Args:
+        request: The HTTP request.
+        username (str): The username of the profile to view.
+
+    Returns:
+        A rendered HTML response.
+    """
     
     user = request.user
     profile_user_object = get_object_or_404(User,username=username)
