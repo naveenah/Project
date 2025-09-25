@@ -1,3 +1,7 @@
+"""
+This module contains the views for the landing app.
+"""
+
 from django.shortcuts import render
 from visits.models import PageVisits
 import helpers.numbers
@@ -6,6 +10,19 @@ import helpers.numbers
 from dashboard.views import dashboard_view
 
 def landing_dashboard_page_view(request):
+    """
+    Renders the landing page for unauthenticated users and the dashboard for
+    authenticated users.
+
+    For unauthenticated users, it also records a page visit and displays
+    formatted page and social view counts.
+
+    Args:
+        request: The HTTP request.
+
+    Returns:
+        A rendered HTML response.
+    """
     if request.user.is_authenticated:
         return dashboard_view(request)
     total_qs = PageVisits.objects.all()
