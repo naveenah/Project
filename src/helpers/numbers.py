@@ -1,3 +1,6 @@
+"""
+This module provides utility functions for working with numbers.
+"""
 def shorten_number(value):
     """
     Converts large numbers into a shortened format.

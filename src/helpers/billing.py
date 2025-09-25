@@ -1,3 +1,9 @@
+"""
+This module provides helper functions for interacting with the Stripe API.
+
+It includes functions for creating customers, products, and prices, as well as
+managing subscriptions and checkout sessions.
+"""
 # Set your secret key. Remember to switch to your live secret key in production.
 # See your keys here: https://dashboard.stripe.com/apikeys
 import stripe
@@ -14,6 +20,16 @@ STRIPE_TEST_OVERRIDE=config("STRIPE_TEST_OVERRIDE", default=False, cast=bool)
 stripe.api_key = STRIPE_SECRET_KEY
 
 def serialize_subscription_data(subscription_response):
+    """
+    Serializes a Stripe subscription object into a dictionary.
+
+    Args:
+        subscription_response: A Stripe subscription object.
+
+    Returns:
+        A dictionary containing the subscription's status, current period start
+        and end dates, and whether it will be canceled at the period end.
+    """
     status = subscription_response.status
     current_period_start = date_utils.timestamp_as_datetime(subscription_response.current_period_start)
     current_period_end = date_utils.timestamp_as_datetime(subscription_response.current_period_end)
@@ -30,6 +46,18 @@ def create_customer(
         email= "",
         metadata={},
         raw = False):
+    """
+    Creates a new customer in Stripe.
+
+    Args:
+        name (str): The customer's name.
+        email (str): The customer's email address.
+        metadata (dict): A dictionary of metadata to associate with the customer.
+        raw (bool): If True, returns the raw Stripe API response.
+
+    Returns:
+        The Stripe customer ID, or the raw response if `raw` is True.
+    """
     response = stripe.Customer.create(name=name, email=email, metadata=metadata,)
     if raw:
         return response
@@ -45,6 +73,17 @@ def create_customer(
 def create_product(name = "",
         metadata={},
         raw = False):
+    """
+    Creates a new product in Stripe.
+
+    Args:
+        name (str): The product's name.
+        metadata (dict): A dictionary of metadata to associate with the product.
+        raw (bool): If True, returns the raw Stripe API response.
+
+    Returns:
+        The Stripe product ID, or the raw response if `raw` is True.
+    """
     response = stripe.Product.create(
         name=name, 
         metadata=metadata,
@@ -61,6 +100,20 @@ def create_price(currency="usd",
                 product=None,
                 metadata={},
         raw = False):
+    """
+    Creates a new price in Stripe.
+
+    Args:
+        currency (str): The currency of the price.
+        unit_amount (str): The amount of the price in cents.
+        interval (str): The billing interval (e.g., "month", "year").
+        product (str): The ID of the product this price belongs to.
+        metadata (dict): A dictionary of metadata to associate with the price.
+        raw (bool): If True, returns the raw Stripe API response.
+
+    Returns:
+        The Stripe price ID, or the raw response if `raw` is True.
+    """
     if product is None:
         return None
     
@@ -78,6 +131,19 @@ def create_price(currency="usd",
     return stripe_id
 
 def start_checkout_session(customer_id,success_url="", cancel_url="", price_stripe_id="", raw=True):
+    """
+    Starts a new checkout session in Stripe.
+
+    Args:
+        customer_id (str): The ID of the customer for this session.
+        success_url (str): The URL to redirect to on successful payment.
+        cancel_url (str): The URL to redirect to on canceled payment.
+        price_stripe_id (str): The ID of the price for this session.
+        raw (bool): If True, returns the raw Stripe API response.
+
+    Returns:
+        The URL of the checkout session, or the raw response if `raw` is True.
+    """
 
     if not success_url.endswith("?session_id={CHECKOUT_SESSION_ID}"):
         success_url = f"{success_url}" + "?session_id={CHECKOUT_SESSION_ID}"
@@ -93,6 +159,16 @@ def start_checkout_session(customer_id,success_url="", cancel_url="", price_stri
     return response.url 
 
 def get_checkout_session(stripe_id, raw=True):
+    """
+    Retrieves a checkout session from Stripe.
+
+    Args:
+        stripe_id (str): The ID of the checkout session.
+        raw (bool): If True, returns the raw Stripe API response.
+
+    Returns:
+        The checkout session URL, or the raw response if `raw` is True.
+    """
     response = stripe.checkout.Session.retrieve(
         stripe_id,
         )
@@ -102,6 +178,16 @@ def get_checkout_session(stripe_id, raw=True):
     return response.url 
 
 def get_subscription(stripe_id, raw=True):
+    """
+    Retrieves a subscription from Stripe.
+
+    Args:
+        stripe_id (str): The ID of the subscription.
+        raw (bool): If True, returns the raw Stripe API response.
+
+    Returns:
+        A serialized subscription dictionary, or the raw response if `raw` is True.
+    """
     response = stripe.Subscription.retrieve(
         stripe_id,
         )
@@ -111,6 +197,15 @@ def get_subscription(stripe_id, raw=True):
     return serialize_subscription_data(response) 
 
 def get_customer_active_subscriptions(customer_stripe_id):
+    """
+    Retrieves all active subscriptions for a customer.
+
+    Args:
+        customer_stripe_id (str): The ID of the customer.
+
+    Returns:
+        A list of active subscriptions.
+    """
     response = stripe.Subscription.list(
         customer=customer_stripe_id,
         status="active"
@@ -120,6 +215,20 @@ def get_customer_active_subscriptions(customer_stripe_id):
 
 def cancel_subscription(stripe_id, reason = "", cancel_at_period_end = False,
                         feedback="other", raw=True):
+    """
+    Cancels a subscription in Stripe.
+
+    Args:
+        stripe_id (str): The ID of the subscription to cancel.
+        reason (str): The reason for cancellation.
+        cancel_at_period_end (bool): If True, cancels the subscription at the
+            end of the current billing period.
+        feedback (str): Customer feedback on the cancellation.
+        raw (bool): If True, returns the raw Stripe API response.
+
+    Returns:
+        A serialized subscription dictionary, or the raw response if `raw` is True.
+    """
 
     if cancel_at_period_end:
         response = stripe.Subscription.modify(
@@ -144,6 +253,15 @@ def cancel_subscription(stripe_id, reason = "", cancel_at_period_end = False,
     return serialize_subscription_data(response) 
 
 def get_checkout_customer_plan(session_id):
+    """
+    Retrieves customer and plan information from a checkout session.
+
+    Args:
+        session_id (str): The ID of the checkout session.
+
+    Returns:
+        A dictionary containing customer and plan information.
+    """
     checkout_r = get_checkout_session(session_id,raw=True)
     customer_id = checkout_r.customer
     sub_stripe_id = checkout_r.subscription
