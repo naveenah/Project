@@ -13,3 +13,4 @@ stripe
 celery 
 redis 
 django-celery-beat
+hypothesis
