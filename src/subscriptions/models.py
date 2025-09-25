@@ -1,3 +1,6 @@
+"""
+This module contains the models for the subscriptions app.
+"""
 import datetime
 import helpers.billing
 from django.db.models import Q
@@ -21,7 +24,20 @@ SUBSCRIPTION_PERMISSION = [
 # Create your models here.
 class Subscription(models.Model):
     """
-    Subscription Product Model = Stripe Product
+    Represents a subscription plan, equivalent to a Stripe Product.
+
+    Attributes:
+        name (str): The name of the subscription.
+        subtitle (str): A short description of the subscription.
+        active (bool): Whether the subscription is currently active.
+        groups (ManyToManyField): The user groups associated with this subscription.
+        permissions (ManyToManyField): The permissions associated with this subscription.
+        stripe_id (str): The corresponding Stripe Product ID.
+        order (int): The display order on the pricing page.
+        featured (bool): Whether the subscription is featured on the pricing page.
+        updated (DateTimeField): The last time the subscription was updated.
+        timestamp (DateTimeField): The time the subscription was created.
+        features (str): A newline-separated list of features for this subscription.
     """
     name = models.CharField(max_length=120)
     subtitle = models.TextField(blank=True, null=True)
@@ -48,11 +64,18 @@ class Subscription(models.Model):
         ordering = ['order', 'featured','-updated']
 
     def get_features_as_list(self):
+        """
+        Returns the features of the subscription as a list of strings.
+        """
         if not self.features:
             return []
         return [x.strip() for x in self.features.split("\n")]    
 
     def save(self, *args, **kwargs):
+        """
+        Saves the subscription and creates a corresponding Stripe Product if one
+        does not already exist.
+        """
         if not self.stripe_id:
             stripe_id = helpers.billing.create_product(
                 name=self.name,
@@ -66,7 +89,17 @@ class Subscription(models.Model):
 
 class SubscriptionPrice(models.Model):
     """
-    Subscription Price Model = Stripe Price
+    Represents the price of a subscription plan, equivalent to a Stripe Price.
+
+    Attributes:
+        subscription (ForeignKey): The subscription this price belongs to.
+        stripe_id (str): The corresponding Stripe Price ID.
+        interval (str): The billing interval (e.g., "month", "year").
+        price (Decimal): The price of the subscription.
+        order (int): The display order on the pricing page.
+        featured (bool): Whether the price is featured on the pricing page.
+        updated (DateTimeField): The last time the price was updated.
+        timestamp (DateTimeField): The time the price was created.
     """
     class IntervalChoices(models.TextChoices):
         MONTHLY = "month", "Monthly"
@@ -88,67 +121,54 @@ class SubscriptionPrice(models.Model):
         ordering = ['subscription__order','order', 'featured','-updated']
 
     def get_checkout_url(self):
+        """
+        Returns the URL for the checkout page for this price.
+        """
         return reverse("sub-price-checkout", kwargs={"price_id": self.id})
 
     @property
     def display_features_list(self):
+        """
+        Returns the features of the associated subscription as a list of strings.
+        """
         if not self.subscription:
             return []
         return self.subscription.get_features_as_list()    
 
     @property
     def display_sub_name(self):
-        if not self.subscription:
-            return "Plan"
-        return self.subscription.name    
-    
-    @property
-    def display_sub_subtitle(self):
-        if not self.subscription:
-            return "Plan"
-        return self.subscription.subtitle    
-    
-    @property
-    def stripe_price(self):
         """
-        Remove decimal places
+        Returns the name of the associated subscription.
         """
-        return int(self.price * 100)
-    
-    @property
-    def stripe_currency(self):
-        return "usd"
+        if not self.subscription:
+            return ""
+        return self.subscription.name
 
     @property
-    def product_stripe_id(self):
-        if not self.subscription:
-            return None
-        return self.subscription.stripe_id
-    
+    def display_price(self):
+        """
+        Returns the price in a human-readable format.
+        """
+        return helpers.numbers.humanize_price(self.price)
+
     def save(self, *args, **kwargs):
-        if (not self.stripe_id and 
-            self.product_stripe_id is not None): 
-            import stripe
-            stripe.api_key = "sk_test_51QWbqXEiMLm0Ho7OfbXfS7CUkuAGMbb2s6qM1kVl2D62g7aTdkBRNR49CvlhbJAIuJRPY26wPGjlEMxgJy5AH4hi00YFRrQ1X5"
+        """
+        Saves the price and creates a corresponding Stripe Price if one does not
+        already exist.
+        """
+        if not self.stripe_id and self.subscription and self.subscription.stripe_id:
             stripe_id = helpers.billing.create_price(
-                currency=self.stripe_currency,
-                unit_amount=self.stripe_price,
+                product=self.subscription.stripe_id,
+                unit_amount=int(self.price * 100),
+                currency="usd",
                 interval=self.interval,
-                product=self.product_stripe_id,
                 metadata={
-                        "subscription_plan_price_id":self.id,
+                        "subscription_price_id":self.id,
                         },
-                raw = False        
-            )
-            self.stripe_id = stripe_id 
-
-        super().save(*args,**kwargs)
-        if self.featured and self.subscription:
-            qs = SubscriptionPrice.objects.filter(
-                subscription = self.subscription,
-                interval=self.interval
-            ).exclude(id=self.id)
-            qs.update(featured=False)
+                        raw=False
+                    )
+            self.stripe_id = stripe_id
+        super().save(*args, **kwargs)
 
 class SubscriptionStatus(models.TextChoices):
         ACTIVE = 'active', 'ACTIVE'
@@ -216,102 +236,83 @@ class UserSubscriptionManager(models.Manager):
         return UserSubscriptionQuerySet(self.model, using=self._db) 
 
 class UserSubscription(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    subscription =  models.ForeignKey(
-        Subscription, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True
-        )
-    stripe_id = models.CharField(max_length=120, null=True, blank=True)
-    active = models.BooleanField(default=True)
-    user_cancelled = models.BooleanField(default=False)
-    original_period_start = models.DateTimeField(
-        auto_now=False, 
-        auto_now_add=False, 
-        blank=True, 
-        null=True
-        )
-    current_period_start = models.DateTimeField(
-        auto_now=False, 
-        auto_now_add=False, 
-        blank=True, 
-        null=True
-        )
-    current_period_end = models.DateTimeField(
-        auto_now=False, 
-        auto_now_add=False, 
-        blank=True, 
-        null=True
-        )     
-    status = models.CharField(
-        max_length=20, 
-        choices=SubscriptionStatus.choices, 
-        null=True, 
-        blank=True)
-    cancel_at_period_end = models.BooleanField(default=False)
+    """
+    Represents a user's subscription to a subscription plan.
 
-    objects = UserSubscriptionManager()
-    
+    Attributes:
+        user (OneToOneField): The user this subscription belongs to.
+        subscription (ForeignKey): The subscription plan.
+        stripe_id (str): The corresponding Stripe Subscription ID.
+        status (str): The status of the subscription.
+        cancel_at_period_end (bool): Whether the subscription will be canceled
+            at the end of the current billing period.
+        original_period_start (DateTimeField): The start of the original
+            billing period.
+        current_period_start (DateTimeField): The start of the current
+            billing period.
+        current_period_end (DateTimeField): The end of the current billing
+            period.
+        updated (DateTimeField): The last time the subscription was updated.
+        timestamp (DateTimeField): The time the subscription was created.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, blank=True, null=True)
+    stripe_id = models.CharField(max_length=120, null=True, blank=True)
+    status = models.CharField(max_length=120, null=True, blank=True)
+    cancel_at_period_end = models.BooleanField(default=False)
+    original_period_start = models.DateTimeField(auto_now=False, auto_now_add=False, blank=True, null=True)
+    current_period_start = models.DateTimeField(auto_now=False, auto_now_add=False, blank=True, null=True)
+    current_period_end = models.DateTimeField(auto_now=False, auto_now_add=False, blank=True, null=True)
+    updated = models.DateTimeField(auto_now=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_active(self):
+        """
+        Returns True if the subscription is active, False otherwise.
+        """
+        return self.status == "active"
+
     def get_absolute_url(self):
+        """
+        Returns the URL for the user's subscription detail page.
+        """
         return reverse("user_subscription")
-    
-    def get_cancel_url(self):
-        return reverse("user_subscription_cancel")
-    
-    @property
-    def plan_name(self):
-        if not self.subscription:
-            return None
-        return self.subscription.name
-    
-    @property
-    def is_active_status(self):
-        return self.status in [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING]
-    
-    def serialize(self):
-        return {
-            "plan_name": self.plan_name,
-            "status": self.status,
-            "current_period_start": self.current_period_start,
-            "current_period_end": self.current_period_end,
-        }
-    
-    @property
-    def billing_cycle_anchor(self):
-        """
-        https://docs.stripe.com/payments/checkout/billing-cycle
-        Optional delay to start new subscription in Stripe checkout
-        """
-        if not self.current_period_end:
-            return None
-        return int(self.current_period_end.timestamp())
-    
+
+    def __str__(self):
+        return f"{self.user.username}"
+
     def save(self, *args, **kwargs):
-        if(self.original_period_start is None and self.current_period_start is not None):
-            self.original_period_start = self.current_period_start
+        """
+        Saves the user subscription.
+        """
+        if self.is_active:
+            if self.subscription:
+                for grp in self.subscription.groups.all():
+                    grp.user_set.add(self.user)
+                for perm_obj in self.subscription.permissions.all():
+                    self.user.user_permissions.add(perm_obj)
+            else:
+                # remove all perms
+                pass
         super().save(*args, **kwargs)
 
-def user_sub_post_save(sender, instance, *args, **kwargs):
-    user_sub_instance = instance 
-    user = user_sub_instance.user
-    subscription_obj = user_sub_instance.subscription
-    groups_ids = []
-    if subscription_obj is not None:
-        groups = subscription_obj.groups.all()
-        groups_ids = groups.values_list('id', flat=True)
-    if not ALLOW_CUSTOM_GROUPS:
-        user.groups.set(groups_ids)
-    else:
-        subs_qs = Subscription.objects.filter(active=True)
-        if subscription_obj is not None:
-            subs_qs = subs_qs.exclude(id=subscription_obj.id)
-        sub_groups = subs_qs.values_list('groups__id', flat=True)
-        sub_groups_set = set(sub_groups)
-        current_groups = user.groups.all().values_list('id', flat=True)
-        group_ids_set = set(groups_ids)
-        current_groups_set = set(current_groups) - sub_groups_set
-        final_group_ids = list(group_ids_set | current_groups_set)
-        user.groups.set(final_group_ids)
+def post_save_user_subscription_receiver(sender, instance, created, *args, **kwargs):
+    """
+    A signal receiver that is called after a UserSubscription is saved.
+    """
+    if created:
+        pass
 
-post_save.connect(user_sub_post_save, sender=UserSubscription)
+post_save.connect(post_save_user_subscription_receiver, sender=UserSubscription)
+
+def user_subscription_post_save_receiver(sender, instance, created, *args, **kwargs):
+    """
+    A signal receiver that is called after a User is saved.
+    """
+    user_sub_obj, created = UserSubscription.objects.get_or_create(user=instance)
+    if ALLOW_CUSTOM_GROUPS:
+        free_trial_group = Group.objects.get(name='free-trial')
+        user_sub_obj.user.groups.add(free_trial_group)
+
+post_save.connect(user_subscription_post_save_receiver, sender=User)

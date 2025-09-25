@@ -1,3 +1,6 @@
+"""
+This module contains the views for the subscriptions app.
+"""
 import helpers.billing
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -9,6 +12,17 @@ from subscriptions import utils as subs_utils
 # Create your views here.
 @login_required
 def user_subscription_view(request):
+    """
+    Renders the user's subscription details page.
+
+    On POST, it refreshes the user's subscription data from Stripe.
+
+    Args:
+        request: The HTTP request.
+
+    Returns:
+        A rendered HTML response.
+    """
     user_sub_obj, created = UserSubscription.objects.get_or_create(user=request.user)
     if request.method == "POST":
         finished = subs_utils.refresh_active_users_subscriptions(user_ids=[request.user.id],active_only=False)
@@ -21,6 +35,17 @@ def user_subscription_view(request):
 
 @login_required
 def user_subscription_cancel_view(request):
+    """
+    Renders the subscription cancellation page.
+
+    On POST, it cancels the user's subscription in Stripe.
+
+    Args:
+        request: The HTTP request.
+
+    Returns:
+        A rendered HTML response.
+    """
     user_sub_obj, created = UserSubscription.objects.get_or_create(user=request.user)
     if request.method == "POST":
         if user_sub_obj.stripe_id:    
@@ -37,7 +62,16 @@ def user_subscription_cancel_view(request):
     return render(request, 'subscriptions/user_cancel_view.html', {"subscription" : user_sub_obj})
 
 def subscription_price_view(request, interval="month"):
-    ''' This method handles the logic required for Pricing'''
+    """
+    Renders the pricing page, showing subscription prices for a given interval.
+
+    Args:
+        request: The HTTP request.
+        interval (str): The billing interval to display ("month" or "year").
+
+    Returns:
+        A rendered HTML response.
+    """
 
     # Build query set, which is filtered by featured
     qs = SubscriptionPrice.objects.filter(featured=True)
