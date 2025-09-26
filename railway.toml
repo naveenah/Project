@@ -14,4 +14,4 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
 [deploy.pre-deploy]
-commands = ["python src/manage.py test src/ai_agent_gateway", "python src/manage.py test src/auth", "python src/manage.py test src/genapp", "python src/manage.py test src/helpers", "python src/manage.py test src/landing", "python src/manage.py test src/checkouts", "python src/manage.py test src/commando", "python src/manage.py test src/customers", "python src/manage.py test src/dashboard", "python src/manage.py test src/profiles", "python src/manage.py test src/subscriptions"]
+commands = ["python src/manage.py test"]
