@@ -264,7 +264,7 @@ class UserSubscription(models.Model):
     current_period_start = models.DateTimeField(auto_now=False, auto_now_add=False, blank=True, null=True)
     current_period_end = models.DateTimeField(auto_now=False, auto_now_add=False, blank=True, null=True)
     updated = models.DateTimeField(auto_now=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True, null=True)
 
     @property
     def is_active(self):
