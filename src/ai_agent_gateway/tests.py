@@ -1,3 +1,4 @@
+import re
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
@@ -6,6 +7,12 @@ import json
 from .models import AgentTrigger
 from .tasks import process_agent_action, check_scheduled_triggers, check_periodic_triggers
 import datetime
+from hypothesis.extra.django import TestCase as HypothesisTestCase
+from hypothesis import given, strategies as st, settings
+
+# Strategy for text that avoids null characters
+# Strategy for text that avoids null characters
+safe_text = st.text(alphabet=st.characters(blacklist_characters='\x00'))
 
 class AgentTriggerModelTest(TestCase):
     def test_agent_trigger_creation(self):
@@ -107,3 +114,87 @@ class AgentGatewayTasksTest(TestCase):
         )
         check_periodic_triggers()
         mock_delay.assert_called_once_with(trigger.id, trigger.action_payload)
+
+class AgentTriggerHypothesisTest(HypothesisTestCase):
+    @given(
+        name=safe_text.filter(lambda x: len(x) > 0 and len(x) <= 255),
+        trigger_type=st.sampled_from([t[0] for t in AgentTrigger.TRIGGER_TYPES]),
+        prompt_pattern=safe_text.filter(lambda x: len(x) <= 255) | st.none(),
+        scheduled_time=st.datetimes(
+            min_value=datetime.datetime(2020, 1, 1),
+            max_value=datetime.datetime(2030, 1, 1),
+        ).map(lambda dt: timezone.make_aware(dt, timezone.get_current_timezone())) | st.none(),
+        periodic_interval=st.timedeltas(min_value=datetime.timedelta(seconds=1)) | st.none(),
+        active=st.booleans(),
+        action_payload=st.dictionaries(
+            safe_text.filter(lambda x: len(x) <= 50), 
+            safe_text.filter(lambda x: len(x) <= 100)
+        ),
+    )
+    @settings(deadline=None)
+    def test_model_creation_with_hypothesis(self, name, trigger_type, prompt_pattern, scheduled_time, periodic_interval, active, action_payload):
+        """Tests that the AgentTrigger model can be created with various data."""
+        
+        if trigger_type != 'prompt':
+            prompt_pattern = None
+        elif prompt_pattern is None:
+            prompt_pattern = ".*"
+
+        if trigger_type != 'scheduled':
+            scheduled_time = None
+        
+        if trigger_type != 'periodic':
+            periodic_interval = None
+
+        AgentTrigger.objects.create(
+            name=name,
+            trigger_type=trigger_type,
+            prompt_pattern=prompt_pattern,
+            scheduled_time=scheduled_time,
+            periodic_interval=periodic_interval,
+            active=active,
+            action_payload=action_payload
+        )
+        
+        trigger = AgentTrigger.objects.get(name=name)
+        self.assertEqual(trigger.name, name)
+        self.assertEqual(trigger.trigger_type, trigger_type)
+
+    @patch('ai_agent_gateway.views.process_agent_action.delay')
+    @given(prompt=safe_text)
+    @settings(deadline=None)
+    def test_handle_prompt_hypothesis(self, mock_delay, prompt):
+        """Tests the handle_prompt view with various prompt strings."""
+        mock_delay.reset_mock()
+        AgentTrigger.objects.all().delete()
+        
+        escaped_prompt = re.escape(prompt)
+        trigger = AgentTrigger.objects.create(
+            name='Hypothesis Trigger',
+            trigger_type='prompt',
+            prompt_pattern=f"^{escaped_prompt}$",
+            active=True,
+            action_payload={'message': 'Matched'}
+        )
+
+        client = Client()
+        response = client.post(
+            reverse('handle_prompt'),
+            json.dumps({'prompt': prompt}),
+            content_type='application/json'
+        )
+
+        if not prompt:
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.json()['error'], 'Prompt is required')
+            mock_delay.assert_not_called()
+            return
+
+        self.assertEqual(response.status_code, 200)
+        
+        if re.search(f"^{escaped_prompt}$", prompt):
+            self.assertEqual(response.json()['message'], f'Trigger {trigger.name} activated')
+            mock_delay.assert_called_once_with(trigger.id, trigger.action_payload)
+        else:
+            self.assertEqual(response.json()['message'], 'No matching triggers found')
+            mock_delay.assert_not_called()
