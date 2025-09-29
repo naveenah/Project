@@ -2,6 +2,9 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.hashers import make_password
+from hypothesis.extra.django import TestCase as HypothesisTestCase
+from hypothesis import given, strategies as st, settings
+from .views import VALID_CODE
 
 class GenappViewsTest(TestCase):
     def setUp(self):
@@ -61,3 +64,26 @@ class GenappViewsTest(TestCase):
         response = self.client.get(reverse('staff_only'))
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, f"{reverse('account_login')}?next={reverse('staff_only')}")
+
+class GenappHypothesisViewsTest(HypothesisTestCase):
+    def setUp(self):
+        self.client = Client()
+
+    @settings(deadline=None)
+    @given(code=st.text())
+    def test_pw_protected_view_hypothesis(self, code):
+        """
+        Tests the password-protected view with various inputs.
+        """
+        response = self.client.post(reverse('pw_protected'), {'code': code})
+        
+        if code == VALID_CODE:
+            self.assertEqual(response.status_code, 200)
+            self.assertTemplateUsed(response, 'genapp/protected.html')
+            self.assertEqual(self.client.session.get('protected_page_allowed'), 1)
+        else:
+            self.assertEqual(response.status_code, 200)
+            self.assertTemplateUsed(response, 'protected/entry.html')
+            # Ensure the session is not set for invalid codes
+            if 'protected_page_allowed' in self.client.session:
+                 self.assertNotEqual(self.client.session.get('protected_page_allowed'), 1)
