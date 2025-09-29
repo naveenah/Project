@@ -6,6 +6,9 @@ from unittest.mock import patch, MagicMock
 from .models import UserSubscription, SubscriptionPrice, Subscription
 from django.contrib.auth.models import Group
 
+from hypothesis.extra.django import TestCase as HypothesisTestCase
+from hypothesis import given, strategies as st, settings
+
 User = get_user_model()
 
 class SubscriptionViewsTest(TestCase):
@@ -90,3 +93,90 @@ class SubscriptionViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'subscriptions/pricing.html')
         self.assertContains(response, 'Pro')
+
+safe_text = st.text(alphabet=st.characters(blacklist_characters='\\x00'))
+
+class SubscriptionHypothesisTest(HypothesisTestCase):
+    @settings(deadline=None)
+    @given(
+        name=safe_text.map(lambda s: s[:120]).filter(lambda s: len(s) > 0),
+        subtitle=st.one_of(st.none(), safe_text),
+        active=st.booleans(),
+        order=st.integers(min_value=-2147483648, max_value=2147483647),
+        featured=st.booleans(),
+        features=st.one_of(st.none(), safe_text),
+    )
+    @patch('helpers.billing.create_product')
+    def test_subscription_model_save_hypothesis(
+        self, mock_create_product, name, subtitle, active, order, featured, features
+    ):
+        """
+        Tests the Subscription model's save method with various inputs.
+        """
+        mock_create_product.return_value = "prod_test_hypothesis"
+        
+        sub = Subscription(
+            name=name,
+            subtitle=subtitle,
+            active=active,
+            order=order,
+            featured=featured,
+            features=features,
+        )
+        sub.save()
+
+        self.assertEqual(sub.name, name)
+        self.assertEqual(sub.subtitle, subtitle)
+        self.assertEqual(sub.active, active)
+        self.assertEqual(sub.order, order)
+        self.assertEqual(sub.featured, featured)
+        self.assertEqual(sub.features, features)
+        
+        # Stripe product should be created only if stripe_id is not set
+        mock_create_product.assert_called_once()
+        self.assertEqual(sub.stripe_id, "prod_test_hypothesis")
+
+        # Test get_features_as_list
+        if features:
+            self.assertEqual(sub.get_features_as_list(), [x.strip() for x in features.split("\\n")])
+        else:
+            self.assertEqual(sub.get_features_as_list(), [])
+
+class SubscriptionPriceHypothesisTest(HypothesisTestCase):
+    def setUp(self):
+        self.subscription = Subscription.objects.create(name='Test Subscription')
+
+    @settings(deadline=None)
+    @given(
+        price=st.decimals(min_value=0, max_value=100000, places=2),
+        interval=st.sampled_from([x[0] for x in SubscriptionPrice.IntervalChoices.choices]),
+        order=st.integers(min_value=-2147483648, max_value=2147483647),
+        featured=st.booleans(),
+    )
+    @patch('helpers.billing.create_price')
+    def test_subscription_price_model_save_hypothesis(
+        self, mock_create_price, price, interval, order, featured
+    ):
+        """
+        Tests the SubscriptionPrice model's save method with various inputs.
+        """
+        mock_create_price.return_value = "price_test_hypothesis"
+        
+        sub_price = SubscriptionPrice(
+            subscription=self.subscription,
+            price=price,
+            interval=interval,
+            order=order,
+            featured=featured,
+        )
+        sub_price.save()
+
+        self.assertEqual(sub_price.subscription, self.subscription)
+        self.assertEqual(sub_price.price, price)
+        self.assertEqual(sub_price.interval, interval)
+        self.assertEqual(sub_price.order, order)
+        self.assertEqual(sub_price.featured, featured)
+        
+        # Stripe price should be created only if stripe_id is not set
+        mock_create_price.assert_called_once()
+        self.assertEqual(sub_price.stripe_id, "price_test_hypothesis")
