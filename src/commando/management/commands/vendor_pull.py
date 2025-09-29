@@ -21,9 +21,11 @@ class Command(BaseCommand):
         Handles the execution of the command.
         """
         self.stdout.write("Downloading vendor static files")
+        
+        vendor_files = getattr(settings, 'VENDOR_STATICFILES', VENDOR_STATICFILES)
 
         completed_urls = []
-        for name, url in VENDOR_STATICFILES.items():
+        for name, url in vendor_files.items():
             out_path = STATICFILES_VENDOR_DIR / name
             dl_status = helpers.download_to_local(url, out_path)
             
@@ -32,7 +34,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.ERROR(f"Failed to download {url}"))
 
-        if set(completed_urls) == set(VENDOR_STATICFILES.values()):
+        if set(completed_urls) == set(vendor_files.values()):
             self.stdout.write(
                 self.style.SUCCESS(f"Successfully updated vendor static files")
             )
