@@ -1,6 +1,6 @@
 import helpers.billing
 from django.contrib import messages
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from subscriptions.models import SubscriptionPrice, Subscription, UserSubscription
 from django.urls import reverse
@@ -16,7 +16,8 @@ def product_price_redirect_view(request, price_id=None, *args, **kwargs):
     """
     Redirects to the checkout start page with the selected price ID stored in the session.
     """
-    request.session['checkout_subscription_price_id'] = price_id
+    price_obj = get_object_or_404(SubscriptionPrice, id=price_id)
+    request.session['checkout_subscription_price_id'] = price_obj.id
     return redirect("stripe-checkout-start")
 
 @login_required
