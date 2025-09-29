@@ -191,3 +191,31 @@ class NumbersTests(unittest.TestCase):
         self.assertEqual(numbers.shorten_number(1000), "1K")
         self.assertEqual(numbers.shorten_number(100), "100")
 
+
+from hypothesis.extra.django import TestCase as HypothesisTestCase
+from hypothesis import given, strategies as st
+
+class NumbersHelperHypothesisTest(HypothesisTestCase):
+    @given(value=st.integers())
+    def test_shorten_number_hypothesis(self, value):
+        """
+        Tests the shorten_number function with a wide range of integers.
+        """
+        result = numbers.shorten_number(value)
+        self.assertIsInstance(result, str)
+
+        if value < 1000 and value >= 0:
+            self.assertEqual(result, str(value))
+        
+        if value >= 1_000_000_000_000:
+            self.assertTrue(result.endswith('T'))
+        elif value >= 1_000_000_000:
+            self.assertTrue(result.endswith('B'))
+        elif value >= 1_000_000:
+            self.assertTrue(result.endswith('M'))
+        elif value >= 1_000:
+            self.assertTrue(result.endswith('K'))
+
+        if value < 0:
+            self.assertEqual(result, str(value))
+
