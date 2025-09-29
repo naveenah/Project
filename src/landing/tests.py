@@ -1,11 +1,12 @@
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.urls import reverse
 from unittest.mock import patch
 from visits.models import PageVisits
 
 class LandingDashboardPageViewTest(TestCase):
     def setUp(self):
+        Group.objects.get_or_create(name='free-trial')
         self.user = User.objects.create_user(username='testuser', password='password')
 
     def test_landing_page_authenticated_user(self):

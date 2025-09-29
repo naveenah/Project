@@ -31,7 +31,7 @@ class AgentTrigger(models.Model):
     periodic_interval = models.DurationField(blank=True, null=True, help_text="Interval for periodic trigger")
     last_triggered = models.DateTimeField(blank=True, null=True)
     active = models.BooleanField(default=True)
-    action_payload = models.JSONField(default=dict) #Store instructions for the agent
+    action_payload = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self):
         return self.name

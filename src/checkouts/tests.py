@@ -1,6 +1,6 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from subscriptions.models import Subscription, SubscriptionPrice, UserSubscription
 from customers.models import Customer
 import helpers.billing
@@ -9,6 +9,7 @@ from unittest.mock import patch
 class CheckoutsViewsTest(TestCase):
     def setUp(self):
         self.client = Client()
+        Group.objects.get_or_create(name='free-trial')
         self.user = User.objects.create_user(username='testuser', password='password')
         self.customer = Customer.objects.create(user=self.user, stripe_id='cus_test')
         self.subscription = Subscription.objects.create(name='Test Subscription', stripe_id='sub_test')
@@ -40,6 +41,7 @@ class CheckoutsViewsTest(TestCase):
         }
         self.client.login(username='testuser', password='password')
         response = self.client.get(reverse('stripe-checkout-end'), {'session_id': 'test_session'})
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('user_subscription'))
         self.assertTrue(UserSubscription.objects.filter(user=self.user).exists())
 

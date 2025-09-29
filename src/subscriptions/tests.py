@@ -4,11 +4,13 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from unittest.mock import patch, MagicMock
 from .models import UserSubscription, SubscriptionPrice, Subscription
+from django.contrib.auth.models import Group
 
 User = get_user_model()
 
 class SubscriptionViewsTest(TestCase):
     def setUp(self):
+        Group.objects.get_or_create(name='free-trial')
         self.user = User.objects.create_user(username='testuser', password='password')
         self.client.login(username='testuser', password='password')
         self.subscription = Subscription.objects.create(name='Pro')
@@ -56,7 +58,9 @@ class SubscriptionViewsTest(TestCase):
         """
         Tests that the cancel subscription view cancels the subscription.
         """
-        user_sub = UserSubscription.objects.create(user=self.user, stripe_id='sub_123')
+        user_sub = UserSubscription.objects.get(user=self.user)
+        user_sub.stripe_id = 'sub_123'
+        user_sub.save()
         mock_cancel.return_value = {
             'status': 'canceled',
             'current_period_start': datetime.datetime(2023, 1, 1, tzinfo=datetime.timezone.utc),

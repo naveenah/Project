@@ -6,6 +6,7 @@ from django.contrib.auth.hashers import make_password
 class GenappViewsTest(TestCase):
     def setUp(self):
         self.client = Client()
+        Group.objects.get_or_create(name='free-trial')
         self.user = User.objects.create_user(username='testuser', password='password')
         self.staff_user = User.objects.create_user(username='staffuser', password='password', is_staff=True)
         self.superuser = User.objects.create_superuser(username='superuser', password='password')

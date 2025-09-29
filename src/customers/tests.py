@@ -1,11 +1,12 @@
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from .models import Customer, allauth_user_signed_up_handler, allauth_email_confirmed_handler
 from allauth.account.models import EmailAddress
 from unittest.mock import patch
 
 class CustomerModelTest(TestCase):
     def setUp(self):
+        Group.objects.get_or_create(name='free-trial')
         self.user = User.objects.create_user(username='testuser', email='test@example.com', password='password')
 
     @patch('helpers.billing.create_customer')

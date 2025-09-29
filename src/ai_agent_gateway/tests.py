@@ -10,9 +10,24 @@ import datetime
 from hypothesis.extra.django import TestCase as HypothesisTestCase
 from hypothesis import given, strategies as st, settings
 
-# Strategy for text that avoids null characters
-# Strategy for text that avoids null characters
-safe_text = st.text(alphabet=st.characters(blacklist_characters='\x00'))
+# Strategy for text that avoids null characters and surrogates
+safe_text = st.text(
+    alphabet=st.characters(
+        min_codepoint=1,
+        max_codepoint=0x10FFFF,
+        blacklist_categories=('Cs',)  # Exclude surrogate characters
+    )
+)
+
+# Strategy for JSON values that avoids surrogates and infinity
+json_values = st.recursive(
+    st.none() | st.booleans() | st.floats(allow_nan=False, allow_infinity=False) | safe_text,
+    lambda children: st.lists(children) | st.dictionaries(safe_text, children),
+    max_leaves=5
+)
+
+# Strategy for the top-level JSON object (must be a dictionary)
+json_strategy = st.dictionaries(safe_text, json_values) | st.just({})
 
 class AgentTriggerModelTest(TestCase):
     def test_agent_trigger_creation(self):
@@ -126,10 +141,7 @@ class AgentTriggerHypothesisTest(HypothesisTestCase):
         ).map(lambda dt: timezone.make_aware(dt, timezone.get_current_timezone())) | st.none(),
         periodic_interval=st.timedeltas(min_value=datetime.timedelta(seconds=1)) | st.none(),
         active=st.booleans(),
-        action_payload=st.dictionaries(
-            safe_text.filter(lambda x: len(x) <= 50), 
-            safe_text.filter(lambda x: len(x) <= 100)
-        ),
+        action_payload=json_strategy,
     )
     @settings(deadline=None)
     def test_model_creation_with_hypothesis(self, name, trigger_type, prompt_pattern, scheduled_time, periodic_interval, active, action_payload):
