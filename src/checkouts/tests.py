@@ -5,6 +5,8 @@ from subscriptions.models import Subscription, SubscriptionPrice, UserSubscripti
 from customers.models import Customer
 import helpers.billing
 from unittest.mock import patch
+from hypothesis.extra.django import TestCase as HypothesisTestCase
+from hypothesis import given, strategies as st, settings
 
 class CheckoutsViewsTest(TestCase):
     def setUp(self):
@@ -44,4 +46,33 @@ class CheckoutsViewsTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse('user_subscription'))
         self.assertTrue(UserSubscription.objects.filter(user=self.user).exists())
+
+class CheckoutsHypothesisViewsTest(HypothesisTestCase):
+    def setUp(self):
+        self.client = Client()
+        Group.objects.get_or_create(name='free-trial')
+        self.user = User.objects.create_user(username='testuser', password='password')
+        self.customer = Customer.objects.create(user=self.user, stripe_id='cus_test')
+        self.subscription = Subscription.objects.create(name='Test Subscription', stripe_id='sub_test')
+        self.price = SubscriptionPrice.objects.create(subscription=self.subscription, stripe_id='price_test', price=1000)
+
+    @given(price_id=st.integers(min_value=0))
+    @settings(deadline=None)
+    def test_product_price_redirect_view_hypothesis(self, price_id):
+        """
+        Tests the product_price_redirect_view with a range of integers for price_id.
+        """
+        self.client.login(username='testuser', password='password')
+        # Ensure the generated id is not the valid one, to test the 404 case,
+        # but also allow the valid case to be tested.
+        if price_id == self.price.id:
+            url = reverse('sub-price-checkout', kwargs={'price_id': self.price.id})
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 302)
+            self.assertRedirects(response, reverse('stripe-checkout-start'), fetch_redirect_response=False)
+            self.assertEqual(self.client.session['checkout_subscription_price_id'], self.price.id)
+        else:
+            url = reverse('sub-price-checkout', kwargs={'price_id': price_id})
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 404)
 
