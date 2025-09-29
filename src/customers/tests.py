@@ -3,6 +3,8 @@ from django.contrib.auth.models import User, Group
 from .models import Customer, allauth_user_signed_up_handler, allauth_email_confirmed_handler
 from allauth.account.models import EmailAddress
 from unittest.mock import patch
+from hypothesis.extra.django import TestCase as HypothesisTestCase
+from hypothesis import given, strategies as st
 
 class CustomerModelTest(TestCase):
     def setUp(self):
@@ -45,4 +47,40 @@ class CustomerModelTest(TestCase):
         customer.save()
         self.assertIsNone(customer.stripe_id)
         mock_create_customer.assert_not_called()
+
+class CustomerHypothesisTest(HypothesisTestCase):
+    def setUp(self):
+        Group.objects.get_or_create(name='free-trial')
+        self.user = User.objects.create_user(username='testuser', email='test@example.com', password='password')
+
+    @given(
+        stripe_id=st.one_of(st.none(), st.text(min_size=1)),
+        init_email=st.one_of(st.none(), st.emails()),
+        init_email_confirmed=st.booleans(),
+    )
+    @patch('helpers.billing.create_customer')
+    def test_customer_save_hypothesis(self, mock_create_customer, stripe_id, init_email, init_email_confirmed):
+        mock_create_customer.return_value = 'cus_test_hypothesis'
+        
+        customer = Customer(
+            user=self.user,
+            stripe_id=stripe_id,
+            init_email=init_email,
+            init_email_confirmed=init_email_confirmed
+        )
+        customer.save()
+
+        should_create_stripe_customer = (
+            stripe_id is None and
+            init_email_confirmed and
+            init_email is not None and
+            init_email != ""
+        )
+
+        if should_create_stripe_customer:
+            mock_create_customer.assert_called_once()
+            self.assertEqual(customer.stripe_id, 'cus_test_hypothesis')
+        else:
+            mock_create_customer.assert_not_called()
+            self.assertEqual(customer.stripe_id, stripe_id)
 
