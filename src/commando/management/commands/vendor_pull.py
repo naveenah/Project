@@ -27,12 +27,15 @@ class Command(BaseCommand):
         completed_urls = []
         for name, url in vendor_files.items():
             out_path = STATICFILES_VENDOR_DIR / name
-            dl_status = helpers.download_to_local(url, out_path)
-            
-            if dl_status:
-                completed_urls.append(url)
-            else:
-                self.stdout.write(self.style.ERROR(f"Failed to download {url}"))
+            try:
+                dl_status = helpers.download_to_local(url, out_path)
+                
+                if dl_status:
+                    completed_urls.append(url)
+                else:
+                    self.stdout.write(self.style.ERROR(f"Failed to download {url}"))
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"An error occurred downloading {url}: {e}"))
 
         if set(completed_urls) == set(vendor_files.values()):
             self.stdout.write(

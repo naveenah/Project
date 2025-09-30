@@ -54,6 +54,7 @@ urlpatterns = [
     path('prompt/', agent_view.handle_prompt, name='handle_prompt'),
     path('triggers/', agent_view.trigger_list, name='trigger_list'),
     path('triggers/create/', agent_view.create_trigger, name='create_trigger'),
+    path('agent/', include('ai_agent_gateway.urls', namespace='agent_gateway')),
     path("admin/", admin.site.urls),
     path("about/", about_view, name='about'),
 ]

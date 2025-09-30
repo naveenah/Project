@@ -38,11 +38,15 @@ class Customer(models.Model):
             if self.init_email_confirmed and self.init_email:
                 email = self.init_email
                 if email != "" or email is not None:
-                    stripe_id = helpers.billing.create_customer(email=email,
-                                                                metadata={"user_id":self.user.id,
-                                                                          "username":self.user.username},
-                                                                raw=False)
-                    self.stripe_id = stripe_id
+                    try:
+                        stripe_id = helpers.billing.create_customer(email=email,
+                                                                    metadata={"user_id":self.user.id,
+                                                                              "username":self.user.username},
+                                                                    raw=False)
+                        self.stripe_id = stripe_id
+                    except Exception as e:
+                        # Log the exception e
+                        pass
         super().save(*args, **kwargs)
 
 def allauth_user_signed_up_handler(request,user, *args, **kwargs):
@@ -56,11 +60,15 @@ def allauth_user_signed_up_handler(request,user, *args, **kwargs):
         user (User): The user who signed up.
     """
     email = user.email
-    Customer.objects.create(
-        user = user,
-        init_email = email,
-        init_email_confirmed = False,
-    )
+    try:
+        Customer.objects.create(
+            user = user,
+            init_email = email,
+            init_email_confirmed = False,
+        )
+    except Exception as e:
+        # Log the exception e
+        pass
 
 allauth_user_signed_up.connect(allauth_user_signed_up_handler)
 
@@ -83,7 +91,11 @@ def allauth_email_confirmed_handler(request,email_address, *args, **kwargs):
     # Does not send the save method or create the stripe customer
     # qs.update(init_email_confirmed=True)
     for obj in qs:
-        obj.init_email_confirmed = True;
-        obj.save()
+        try:
+            obj.init_email_confirmed = True;
+            obj.save()
+        except Exception as e:
+            # Log the exception e
+            pass
 
 allauth_email_confirmed.connect(allauth_email_confirmed_handler)
