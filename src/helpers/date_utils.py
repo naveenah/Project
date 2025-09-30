@@ -12,6 +12,10 @@ def timestamp_as_datetime(timestamp):
         timestamp (int): A Unix timestamp.
 
     Returns:
-        A datetime object representing the timestamp in UTC.
+        A datetime object representing the timestamp in UTC, or None if the
+        timestamp is invalid.
     """
-    return datetime.datetime.fromtimestamp(timestamp,tz=datetime.UTC)
+    try:
+        return datetime.datetime.fromtimestamp(timestamp,tz=datetime.UTC)
+    except (ValueError, TypeError, OSError):
+        return None

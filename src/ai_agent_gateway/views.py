@@ -36,14 +36,26 @@ def handle_prompt(request):
         triggers = AgentTrigger.objects.filter(trigger_type='prompt', active=True)
         
         for trigger in triggers:
-            if re.match(trigger.prompt_pattern, prompt):
-                process_agent_action.delay(trigger.id, trigger.action_payload)
-                return JsonResponse({'message': f'Trigger {trigger.name} activated'})
+            try:
+                if re.match(trigger.prompt_pattern, prompt):
+                    try:
+                        process_agent_action.delay(trigger.id, trigger.action_payload)
+                        return JsonResponse({'message': f'Trigger {trigger.name} activated'})
+                    except Exception as e:
+                        # Log the exception e
+                        return JsonResponse({'error': 'Could not queue action for trigger'}, status=500)
+            except re.error as e:
+                # Log the exception e
+                return JsonResponse({'error': f'Regex error for trigger {trigger.name}'}, status=500)
+
 
         return JsonResponse({'message': 'No matching triggers found'})
 
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        # Log the exception e
+        return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
 
 
 @csrf_exempt
@@ -85,7 +97,7 @@ def create_trigger(request):
 
         try:
             action_payload_json = json.loads(action_payload)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
             action_payload_json = {}
 
         periodic_interval_delta = None
@@ -94,17 +106,23 @@ def create_trigger(request):
             days, time = periodic_interval.split(' ')
             hours, minutes, seconds = time.split(':')
             periodic_interval_delta = timedelta(days=int(days), hours=int(hours), minutes=int(minutes), seconds=int(seconds))
-          except ValueError:
+          except (ValueError, TypeError):
             periodic_interval_delta=None
 
-        AgentTrigger.objects.create(
-            name=name,
-            trigger_type=trigger_type,
-            prompt_pattern=prompt_pattern,
-            scheduled_time=scheduled_time,
-            periodic_interval=periodic_interval_delta,
-            action_payload=action_payload_json,
-            active=active,
-        )
-        return redirect('trigger_list')
-    return redirect('trigger_list') # Handles get request.
+        try:
+            AgentTrigger.objects.create(
+                name=name,
+                trigger_type=trigger_type,
+                prompt_pattern=prompt_pattern,
+                scheduled_time=scheduled_time,
+                periodic_interval=periodic_interval_delta,
+                action_payload=action_payload_json,
+                active=active
+            )
+        except Exception as e:
+            # Log the exception e
+            # Consider adding a message to the user
+            pass
+
+        return redirect('agent_gateway:trigger_list')
+    return render(request, 'agent_gateway/create_trigger.html')
