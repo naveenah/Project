@@ -1,8 +1,12 @@
+import logging
 from django.test import TestCase
 from django.contrib.auth.models import User, Group
 from django.urls import reverse
 from unittest.mock import patch
 from visits.models import PageVisits
+
+logger = logging.getLogger(__name__)
+logger.info("landing tests loaded")
 
 class LandingDashboardPageViewTest(TestCase):
     def setUp(self):

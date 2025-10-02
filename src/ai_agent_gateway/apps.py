@@ -1,6 +1,9 @@
+import logging
 # agent_gateway/apps.py
 from django.apps import AppConfig
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 class AgentGatewayConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -16,7 +19,9 @@ class AgentGatewayConfig(AppConfig):
         minute using crontab scheduling. This ensures that the trigger checks
         are performed regularly by the Celery Beat scheduler process.
         """
+        logger.info("Agent Gateway app is ready.")
         if 'celery' in settings.INSTALLED_APPS:
+            logger.info("Celery is installed, configuring Celery Beat schedule.")
             from . import tasks
             from celery.schedules import crontab
             from celery.beat import crontab_to_periodic
@@ -33,3 +38,6 @@ class AgentGatewayConfig(AppConfig):
                     'schedule': crontab(minute='*'), # Check every minute
                 },
             }
+            logger.info("Celery Beat schedule configured for agent_gateway tasks.")
+        else:
+            logger.warning("Celery is not installed, Celery Beat schedule for agent_gateway will not be configured.")

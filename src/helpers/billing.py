@@ -1,3 +1,4 @@
+import logging
 """
 This module provides helper functions for interacting with the Stripe API.
 
@@ -10,6 +11,8 @@ import stripe
 from decouple import config
 from . import date_utils
 
+logger = logging.getLogger(__name__)
+
 DJANGO_DEBUG=config("DJANGO_DEBUG", default=False, cast=bool)
 STRIPE_SECRET_KEY=config("STRIPE_SECRET_KEY", default="", cast=str)
 STRIPE_TEST_OVERRIDE=config("STRIPE_TEST_OVERRIDE", default=False, cast=bool)
@@ -18,6 +21,7 @@ STRIPE_TEST_OVERRIDE=config("STRIPE_TEST_OVERRIDE", default=False, cast=bool)
 #    raise ValueError("Invalid stripe key in Production")
 
 stripe.api_key = STRIPE_SECRET_KEY
+logger.info("Stripe API key set.")
 
 def serialize_subscription_data(subscription_response):
     """
@@ -34,12 +38,14 @@ def serialize_subscription_data(subscription_response):
     current_period_start = date_utils.timestamp_as_datetime(subscription_response.current_period_start)
     current_period_end = date_utils.timestamp_as_datetime(subscription_response.current_period_end)
     cancel_at_period_end = subscription_response.cancel_at_period_end
-    return {
+    data = {
         "current_period_start": current_period_start,
         "current_period_end": current_period_end,
         "status" : status,
         "cancel_at_period_end": cancel_at_period_end,
     }
+    logger.debug(f"Serialized subscription data: {data}")
+    return data
 
 def create_customer(
         name = "",
@@ -58,12 +64,19 @@ def create_customer(
     Returns:
         The Stripe customer ID, or the raw response if `raw` is True.
     """
-    response = stripe.Customer.create(name=name, email=email, metadata=metadata,)
-    if raw:
-        return response
-    
-    stripe_id = response.id
-    return stripe_id
+    logger.info(f"Creating Stripe customer with email: {email}")
+    try:
+        response = stripe.Customer.create(name=name, email=email, metadata=metadata,)
+        if raw:
+            logger.debug("Returning raw Stripe customer response.")
+            return response
+        
+        stripe_id = response.id
+        logger.info(f"Stripe customer created with ID: {stripe_id}")
+        return stripe_id
+    except Exception as e:
+        logger.error(f"Error creating Stripe customer: {e}", exc_info=True)
+        raise
     #stripe.api_key = STRIPE_SECRET_KEY
     #stripe.Customer.create(
     #  name="Jenny Rosen",
@@ -84,30 +97,37 @@ def create_product(name = "",
     Returns:
         The Stripe product ID, or the raw response if `raw` is True.
     """
-    response = stripe.Product.create(
-        name=name, 
-        metadata=metadata,
-        )
-    if raw:
-        return response
-    
-    stripe_id = response.id
-    return stripe_id
+    logger.info(f"Creating Stripe product with name: {name}")
+    try:
+        response = stripe.Product.create(
+            name=name, 
+            metadata=metadata,
+            )
+        if raw:
+            logger.debug("Returning raw Stripe product response.")
+            return response
+        
+        stripe_id = response.id
+        logger.info(f"Stripe product created with ID: {stripe_id}")
+        return stripe_id
+    except Exception as e:
+        logger.error(f"Error creating Stripe product: {e}", exc_info=True)
+        raise
 
 def create_price(currency="usd",
                 unit_amount="9999",
                 interval="month",
                 product=None,
                 metadata={},
-        raw = False):
+                raw = False):
     """
     Creates a new price in Stripe.
 
     Args:
         currency (str): The currency of the price.
         unit_amount (str): The amount of the price in cents.
-        interval (str): The billing interval (e.g., "month", "year").
-        product (str): The ID of the product this price belongs to.
+        interval (str): The billing interval ('month', 'year', etc.).
+        product (str): The Stripe product ID.
         metadata (dict): A dictionary of metadata to associate with the price.
         raw (bool): If True, returns the raw Stripe API response.
 
@@ -115,48 +135,65 @@ def create_price(currency="usd",
         The Stripe price ID, or the raw response if `raw` is True.
     """
     if product is None:
-        return None
-    
-    response = stripe.Price.create(
-                currency=currency,
-                unit_amount=unit_amount,
-                recurring={"interval":interval},
-                product=product,
-                metadata=metadata,
-            )
-    if raw:
-        return response
-    
-    stripe_id = response.id
-    return stripe_id
+        raise ValueError("Stripe `product` ID is required.")
+    logger.info(f"Creating Stripe price for product: {product}")
+    try:
+        response = stripe.Price.create(
+            currency=currency,
+            unit_amount=unit_amount,
+            recurring={"interval": interval},
+            product=product,
+            metadata=metadata,
+        )
+        if raw:
+            logger.debug("Returning raw Stripe price response.")
+            return response
+        stripe_id = response.id
+        logger.info(f"Stripe price created with ID: {stripe_id}")
+        return stripe_id
+    except Exception as e:
+        logger.error(f"Error creating Stripe price: {e}", exc_info=True)
+        raise
 
-def start_checkout_session(customer_id,success_url="", cancel_url="", price_stripe_id="", raw=True):
+def start_checkout_session(customer_stripe_id,
+                           success_url="",
+                           cancel_url="",
+                           price_stripe_id="",
+                           raw=False):
     """
     Starts a new checkout session in Stripe.
 
     Args:
-        customer_id (str): The ID of the customer for this session.
+        customer_stripe_id (str): The customer's Stripe ID.
         success_url (str): The URL to redirect to on successful payment.
         cancel_url (str): The URL to redirect to on canceled payment.
-        price_stripe_id (str): The ID of the price for this session.
+        price_stripe_id (str): The Stripe price ID.
         raw (bool): If True, returns the raw Stripe API response.
 
     Returns:
-        The URL of the checkout session, or the raw response if `raw` is True.
+        The checkout session URL, or the raw response if `raw` is True.
     """
-
-    if not success_url.endswith("?session_id={CHECKOUT_SESSION_ID}"):
-        success_url = f"{success_url}" + "?session_id={CHECKOUT_SESSION_ID}"
-    response = stripe.checkout.Session.create(
-    customer=customer_id,    
-    success_url=success_url,
-    cancel_url=cancel_url,
-    line_items=[{"price": price_stripe_id, "quantity": 1}],
-    mode="subscription",
-    )
-    if raw:
-        return response
-    return response.url 
+    if success_url == "" or cancel_url == "":
+        raise ValueError("`success_url` and `cancel_url` are required.")
+    logger.info(f"Starting checkout session for customer: {customer_stripe_id} with price: {price_stripe_id}")
+    success_url = f'{success_url}?session_id={{CHECKOUT_SESSION_ID}}'
+    try:
+        response = stripe.checkout.Session.create(
+            customer=customer_stripe_id,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            line_items=[
+                {"price": price_stripe_id, "quantity": 1},
+            ],
+            mode="subscription",
+        )
+        if raw:
+            logger.debug("Returning raw Stripe checkout session response.")
+            return response
+        return response.url
+    except Exception as e:
+        logger.error(f"Error starting checkout session for customer {customer_stripe_id}: {e}", exc_info=True)
+        raise
 
 def get_checkout_session(stripe_id, raw=True):
     """

@@ -14,3 +14,7 @@ from django.core.asgi import get_asgi_application
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "genapp.settings")
 
 application = get_asgi_application()
+
+# Start the log listener
+from .log_listener import start_log_listener
+start_log_listener()

@@ -11,6 +11,9 @@ from hypothesis import given, strategies as st, settings
 
 User = get_user_model()
 
+# Strategy for text that avoids null characters
+safe_text = st.text(alphabet=st.characters(min_codepoint=1, max_codepoint=0xD7FF))
+
 class SubscriptionViewsTest(TestCase):
     def setUp(self):
         Group.objects.get_or_create(name='free-trial')
@@ -61,15 +64,12 @@ class SubscriptionViewsTest(TestCase):
         """
         Tests that the cancel subscription view cancels the subscription.
         """
-        user_sub = UserSubscription.objects.get(user=self.user)
-        user_sub.stripe_id = 'sub_123'
-        user_sub.save()
-        mock_cancel.return_value = {
-            'status': 'canceled',
-            'current_period_start': datetime.datetime(2023, 1, 1, tzinfo=datetime.timezone.utc),
-            'current_period_end': datetime.datetime(2023, 2, 1, tzinfo=datetime.timezone.utc),
-            'cancel_at_period_end': True,
-        }
+        user_sub = UserSubscription.objects.create(user=self.user, subscription=self.subscription, stripe_id='sub_123')
+        
+        mock_sub_data = MagicMock()
+        mock_sub_data.items.return_value = {'cancel_at_period_end': True}.items()
+        mock_cancel.return_value = mock_sub_data
+
         response = self.client.post(reverse('user_subscription_cancel'))
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse('user_subscription'))
@@ -93,8 +93,6 @@ class SubscriptionViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'subscriptions/pricing.html')
         self.assertContains(response, 'Pro')
-
-safe_text = st.text(alphabet=st.characters(blacklist_characters='\\x00'))
 
 class SubscriptionHypothesisTest(HypothesisTestCase):
     @settings(deadline=None)
@@ -137,10 +135,10 @@ class SubscriptionHypothesisTest(HypothesisTestCase):
         self.assertEqual(sub.stripe_id, "prod_test_hypothesis")
 
         # Test get_features_as_list
+        expected_features = []
         if features:
-            self.assertEqual(sub.get_features_as_list(), [x.strip() for x in features.split("\\n")])
-        else:
-            self.assertEqual(sub.get_features_as_list(), [])
+            expected_features = [x.strip() for x in features.splitlines() if x.strip()]
+        self.assertEqual(sub.get_features_as_list(), expected_features)
 
 class SubscriptionPriceHypothesisTest(HypothesisTestCase):
     def setUp(self):

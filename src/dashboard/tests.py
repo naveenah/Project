@@ -1,6 +1,10 @@
+import logging
 from django.test import TestCase
 from django.contrib.auth.models import User, Group
 from django.urls import reverse
+
+logger = logging.getLogger(__name__)
+logger.info("dashboard tests loaded")
 
 class DashboardViewTest(TestCase):
     def setUp(self):

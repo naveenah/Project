@@ -1,9 +1,12 @@
+import logging
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.contrib.auth.models import Group
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+logger.info("profiles tests loaded")
 
 class ProfileListViewTest(TestCase):
     def setUp(self):
