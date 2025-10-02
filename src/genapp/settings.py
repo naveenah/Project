@@ -254,3 +254,42 @@ CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC' # Or your timezone
+
+# src/genapp/settings.py
+# ... (imports and other settings)
+
+# Import the shared queue
+from .log_listener import log_queue
+
+# Asynchronous Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        },
+    },
+    'handlers': {
+        'queue': {
+            'class': 'logging.handlers.QueueHandler',
+            'queue': log_queue,
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['queue'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'my_app': {
+            'handlers': ['queue'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['queue'],
+        'level': 'INFO',
+    },
+}

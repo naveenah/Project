@@ -1,3 +1,4 @@
+import logging
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
@@ -6,17 +7,20 @@ from visits.models import PageVisits
 from django.conf import settings
 
 LOGIN_URL = settings.LOGIN_URL
+logger = logging.getLogger(__name__)
 
 def home_view(request, *args, **kwargs):
     """
     Redirects to the about view.
     """
+    logger.info("Home view accessed, redirecting to about view.")
     return about_view(request, *args,**kwargs)
 
 def about_view(request, *args, **kwargs):
     """
     Displays statistics about page visits.
     """
+    logger.info(f"About view accessed by {'authenticated user' if request.user.is_authenticated else 'anonymous user'}.")
     try:
         total_qs = PageVisits.objects.all()
         qs = PageVisits.objects.filter(path=request.path)
@@ -24,6 +28,7 @@ def about_view(request, *args, **kwargs):
             percent = (qs.count() * 100.0) / total_qs.count()
         except ZeroDivisionError:
             percent = 0
+            logger.warning("ZeroDivisionError in about_view: total_qs.count() is zero.")
 
         _html_template = "about.html"
         _page_title = "About Page"
@@ -36,7 +41,7 @@ def about_view(request, *args, **kwargs):
         PageVisits.objects.create(path=request.path)
         return render(request, _html_template, _html_context)
     except Exception as e:
-        # Log the exception e
+        logger.error(f"An unexpected error occurred in about_view: {e}", exc_info=True)
         return HttpResponse("An unexpected error occurred.", status=500)
 
 VALID_CODE = "abc123"
@@ -48,9 +53,13 @@ def pw_protected_view(request, *args, **kwargs):
     is_allowed = request.session.get('protected_page_allowed') or 0
     if request.method == "POST":
         user_pw_sent = request.POST.get("code") or None
+        logger.info(f"Password protected view accessed with code: {'provided' if user_pw_sent else 'not provided'}")
         if user_pw_sent == VALID_CODE:
             is_allowed = 1
             request.session['protected_page_allowed'] = is_allowed
+            logger.info("Correct password provided for protected view.")
+        else:
+            logger.warning("Incorrect password provided for protected view.")
     if is_allowed:
         return render(request, "genapp/protected.html", {})
     
@@ -61,6 +70,7 @@ def user_only_view(request, *args, **kwargs):
     """
     A view that is only accessible to authenticated users.
     """
+    logger.info(f"User only view accessed by: {request.user.username}")
     return render(request, "genapp/user_only.html")
 
 @staff_member_required(login_url=LOGIN_URL)
@@ -68,4 +78,5 @@ def staff_only_view(request, *args, **kwargs):
     """
     A view that is only accessible to staff members.
     """
+    logger.info(f"Staff only view accessed by: {request.user.username}")
     return render(request, "genapp/staff_only.html")

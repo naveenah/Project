@@ -1,3 +1,4 @@
+import logging
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
@@ -6,6 +7,9 @@ from hypothesis import given, strategies as st, settings
 
 # Strategy for text that avoids null characters and surrogates, as they can cause issues with databases and other systems.
 safe_text = st.text(alphabet=st.characters(min_codepoint=1, max_codepoint=0xD7FF))
+
+logger = logging.getLogger(__name__)
+logger.info("auth tests loaded")
 
 class AuthViewsTest(TestCase):
     @classmethod

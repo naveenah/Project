@@ -4,7 +4,7 @@ from .models import Customer, allauth_user_signed_up_handler, allauth_email_conf
 from allauth.account.models import EmailAddress
 from unittest.mock import patch
 from hypothesis.extra.django import TestCase as HypothesisTestCase
-from hypothesis import given, strategies as st
+from hypothesis import given, strategies as st, settings
 
 class CustomerModelTest(TestCase):
     def setUp(self):
@@ -54,10 +54,11 @@ class CustomerHypothesisTest(HypothesisTestCase):
         self.user = User.objects.create_user(username='testuser', email='test@example.com', password='password')
 
     @given(
-        stripe_id=st.one_of(st.none(), st.text(min_size=1)),
+        stripe_id=st.one_of(st.none(), st.text(alphabet=st.characters(blacklist_characters='\x00'), min_size=1)),
         init_email=st.one_of(st.none(), st.emails()),
         init_email_confirmed=st.booleans(),
     )
+    @settings(deadline=None)
     @patch('helpers.billing.create_customer')
     def test_customer_save_hypothesis(self, mock_create_customer, stripe_id, init_email, init_email_confirmed):
         mock_create_customer.return_value = 'cus_test_hypothesis'

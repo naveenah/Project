@@ -1,6 +1,9 @@
+import logging
 # agent_gateway/models.py
 from django.db import models
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 class AgentTrigger(models.Model):
     """
@@ -35,6 +38,18 @@ class AgentTrigger(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new:
+            logger.info(f"New AgentTrigger created: {self.name}")
+        else:
+            logger.info(f"AgentTrigger updated: {self.name}")
+
+    def delete(self, *args, **kwargs):
+        logger.warning(f"Deleting AgentTrigger: {self.name}")
+        super().delete(*args, **kwargs)
 
     class Meta:
         indexes = [

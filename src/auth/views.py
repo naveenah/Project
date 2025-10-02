@@ -1,6 +1,9 @@
+import logging
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.forms import AuthenticationForm
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 def login_view(request):
@@ -15,13 +18,17 @@ def login_view(request):
         if form.is_valid():
             username = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
+            logger.info(f"Attempting to authenticate user: {username}")
             try:
                 user = authenticate(request, username=username, password=password)
                 if user is not None:
                     login(request, user)
+                    logger.info(f"User {username} logged in successfully.")
                     return redirect("/")
+                else:
+                    logger.warning(f"Authentication failed for user: {username}")
             except Exception as e:
-                # Log the exception e
+                logger.error(f"An unexpected error occurred during authentication for user {username}: {e}", exc_info=True)
                 form.add_error(None, "An unexpected error occurred during authentication.")
     else:
         form = AuthenticationForm()
@@ -31,4 +38,5 @@ def register_view(request):
     """
     Displays the registration page.
     """
+    logger.info("Registration page accessed.")
     return render(request, "auth/register.html", {})

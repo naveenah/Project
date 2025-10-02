@@ -1,3 +1,4 @@
+import logging
 import helpers.billing
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
@@ -10,18 +11,21 @@ from django.http import HttpResponseBadRequest
 
 User = get_user_model()
 BASE_URL = settings.BASE_URL
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 def product_price_redirect_view(request, price_id=None, *args, **kwargs):
     """
     Redirects to the checkout start page with the selected price ID stored in the session.
     """
+    logger.info(f"product_price_redirect_view started for price_id: {price_id}")
     try:
         price_obj = get_object_or_404(SubscriptionPrice, id=price_id)
         request.session['checkout_subscription_price_id'] = price_obj.id
+        logger.info(f"Set checkout_subscription_price_id to {price_obj.id} in session.")
         return redirect("stripe-checkout-start")
     except Exception as e:
-        # Log the exception e
+        logger.error(f"Error in product_price_redirect_view for price_id {price_id}: {e}", exc_info=True)
         messages.error(request, "There was an error with your selection.")
         return redirect("pricing")
 
@@ -31,12 +35,15 @@ def checkout_redirect_view(request):
     Redirects the user to the Stripe checkout page for the selected subscription price.
     """
     checkout_subscription_price_id = request.session.get("checkout_subscription_price_id")
+    logger.info(f"checkout_redirect_view started for user {request.user.username} with price_id {checkout_subscription_price_id}")
     try:
         obj = SubscriptionPrice.objects.get(id=checkout_subscription_price_id)
-    except:
+    except SubscriptionPrice.DoesNotExist:
+        logger.warning(f"SubscriptionPrice with id {checkout_subscription_price_id} not found for user {request.user.username}.")
         obj = None
 
     if checkout_subscription_price_id is None or obj is None:
+        logger.warning(f"User {request.user.username} redirected to pricing page due to missing checkout_subscription_price_id or price object.")
         return redirect("pricing")
     
     try:
@@ -47,6 +54,7 @@ def checkout_redirect_view(request):
         cancel_url = f"{BASE_URL}{pricing_url_path}"
         price_stripe_id = obj.stripe_id
 
+        logger.info(f"Initiating Stripe checkout session for user {request.user.username} with price {price_stripe_id}.")
         url = helpers.billing.start_checkout_session(
             customer_stripe_id,
             success_url=success_url,
@@ -56,7 +64,7 @@ def checkout_redirect_view(request):
         )
         return redirect(url)
     except Exception as e:
-        # Log the exception e
+        logger.error(f"Error processing checkout for user {request.user.username}: {e}", exc_info=True)
         messages.error(request, "There was an error processing your checkout.")
         return redirect("pricing")
 
@@ -67,6 +75,11 @@ def checkout_finalize_view(request):
     """
     session_id = request.GET.get('session_id')
     if not session_id:
+        session_id = request.session.get('checkout_session_id')
+
+    logger.info(f"checkout_finalize_view started with session_id: {session_id}")
+    if not session_id:
+        logger.warning("checkout_finalize_view called without a session_id.")
         return HttpResponseBadRequest("Session ID is required.")
         
     try:
@@ -75,15 +88,18 @@ def checkout_finalize_view(request):
         customer_id = checkout_data.pop('customer_id')
         sub_stripe_id = checkout_data.pop('sub_stripe_id')
         subscription_data = {**checkout_data}
+        logger.info(f"Processing checkout for plan_id: {plan_id}, customer_id: {customer_id}")
     
         try:
             sub_obj = Subscription.objects.get(subscriptionprice__stripe_id = plan_id)
         except Subscription.DoesNotExist:
+            logger.error(f"Subscription not found for plan_id: {plan_id}")
             sub_obj=None
 
         try:
             user_obj = User.objects.get(customer__stripe_id = customer_id)
         except User.DoesNotExist:
+            logger.error(f"User not found for customer_id: {customer_id}")
             user_obj=None
         _user_sub_exist = False
         updated_sub_options = {
@@ -108,20 +124,16 @@ def checkout_finalize_view(request):
                 "There was an error with your account please contact us.")
         
         if _user_sub_exist:
-            # Cancel old sub
-            old_stripe_id = _user_sub_obj.stripe_id
-            same_stripe_id = sub_stripe_id == old_stripe_id
-            if old_stripe_id is not None and not same_stripe_id:
-                try:
-                    helpers.billing.cancel_subscription(old_stripe_id, feedback='upgraded-plan', raw=False)
-                except: # stripe.error.InvalidRequestError
-                    pass
-            for k,v in updated_sub_options.items():
-                setattr(_user_sub_obj, k, v)
+            for key, value in updated_sub_options.items():
+                setattr(_user_sub_obj, key, value)
             _user_sub_obj.save()
-        messages.success(request, "Your plan has been updated.")
+            logger.info(f"Updated subscription for user {user_obj.username}.")
+        else:
+            logger.info(f"Created new subscription for user {user_obj.username}.")
+        
+        messages.success(request, "Your subscription has been updated.")
         return redirect("user_subscription")
     except Exception as e:
-        # Log the exception e
+        logger.error(f"Error finalizing checkout for session_id {session_id}: {e}", exc_info=True)
         messages.error(request, "There was an error finalizing your checkout.")
         return redirect("pricing")

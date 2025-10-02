@@ -14,3 +14,7 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "genapp.settings")
 
 application = get_wsgi_application()
+
+# Start the log listener
+from .log_listener import start_log_listener
+start_log_listener()

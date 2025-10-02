@@ -75,10 +75,10 @@ class BillingTests(unittest.TestCase):
 
     def test_create_price_no_product(self):
         """
-        Test that create_price returns None if no product is provided.
+        Test that create_price raises a ValueError if no product is provided.
         """
-        stripe_id = billing.create_price(product=None)
-        self.assertIsNone(stripe_id)
+        with self.assertRaises(ValueError):
+            billing.create_price(product=None)
 
     @patch("stripe.checkout.Session.create")
     def test_start_checkout_session(self, mock_session_create):
@@ -87,7 +87,7 @@ class BillingTests(unittest.TestCase):
         """
         mock_session_create.return_value = MagicMock(url="http://checkout.url")
         url = billing.start_checkout_session(
-            customer_id="cus_123",
+            customer_stripe_id="cus_123",
             success_url="http://success.url",
             cancel_url="http://cancel.url",
             price_stripe_id="price_123",
@@ -98,12 +98,14 @@ class BillingTests(unittest.TestCase):
             customer="cus_123",
             success_url="http://success.url?session_id={CHECKOUT_SESSION_ID}",
             cancel_url="http://cancel.url",
-            line_items=[{"price": "price_123", "quantity": 1}],
+            line_items=[
+                {"price": "price_123", "quantity": 1},
+            ],
             mode="subscription",
         )
 
     @patch("stripe.checkout.Session.retrieve")
-    def test_get_checkout_session(self, mock_session_retrieve):
+    def test_get_checkout_customer_plan(self, mock_session_retrieve):
         """
         Test that a Stripe checkout session is retrieved correctly.
         """

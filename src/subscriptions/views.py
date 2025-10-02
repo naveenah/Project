@@ -81,7 +81,7 @@ def subscription_price_view(request, interval="month"):
     inv_yr = SubscriptionPrice.IntervalChoices.YEARLY
 
     # Further filter the query set by interval.
-    object_list=qs.filter(interval=inv_mo)
+    object_list = qs.filter(subscription__active=True, interval=inv_mo)
     url_path_name = "pricing_interval"
 
     # Define the url for the interval choices.
@@ -94,7 +94,7 @@ def subscription_price_view(request, interval="month"):
     # Based on the interval tab selection change the query set to yearly.
     if interval == inv_yr:
         active = inv_yr
-        object_list = qs.filter(interval=inv_yr)
+        object_list = qs.filter(subscription__active=True, interval=inv_yr)
 
     return render(request, "subscriptions/pricing.html", {
         "object_list":object_list,

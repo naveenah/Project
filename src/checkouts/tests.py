@@ -1,3 +1,4 @@
+import logging
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
@@ -7,6 +8,9 @@ import helpers.billing
 from unittest.mock import patch
 from hypothesis.extra.django import TestCase as HypothesisTestCase
 from hypothesis import given, strategies as st, settings
+
+logger = logging.getLogger(__name__)
+logger.info("checkouts tests loaded")
 
 class CheckoutsViewsTest(TestCase):
     def setUp(self):
@@ -34,18 +38,24 @@ class CheckoutsViewsTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, 'http://test.url', fetch_redirect_response=False)
 
-    @patch('helpers.billing.get_checkout_customer_plan')
-    def test_checkout_finalize_view(self, mock_get_checkout_customer_plan):
-        mock_get_checkout_customer_plan.return_value = {
-            'plan_id': self.price.stripe_id,
-            'customer_id': self.customer.stripe_id,
-            'sub_stripe_id': 'sub_stripe_123',
-        }
-        self.client.login(username='testuser', password='password')
-        response = self.client.get(reverse('stripe-checkout-end'), {'session_id': 'test_session'})
-        self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse('user_subscription'))
-        self.assertTrue(UserSubscription.objects.filter(user=self.user).exists())
+    @patch('stripe.Subscription.retrieve')
+    @patch('stripe.checkout.Session.retrieve')
+    def test_checkout_finalize_view(self, mock_stripe_session_retrieve, mock_stripe_sub_retrieve):
+        mock_stripe_session_retrieve.return_value.client_reference_id = self.user.id
+        mock_stripe_session_retrieve.return_value.customer = 'some_customer_id'
+        mock_stripe_session_retrieve.return_value.subscription = 'some_sub_id'
+
+        mock_stripe_sub_retrieve.return_value.plan.id = self.price.stripe_id
+
+        session = self.client.session
+        session['checkout_session_id'] = 'some_session_id'
+        session.save()
+
+        url = f"{reverse('stripe-checkout-end')}?session_id=some_session_id"
+        response = self.client.get(url)
+
+        user_sub = UserSubscription.objects.get(user=self.user)
+        self.assertRedirects(response, user_sub.get_absolute_url())
 
 class CheckoutsHypothesisViewsTest(HypothesisTestCase):
     def setUp(self):
@@ -74,5 +84,6 @@ class CheckoutsHypothesisViewsTest(HypothesisTestCase):
         else:
             url = reverse('sub-price-checkout', kwargs={'price_id': price_id})
             response = self.client.get(url)
-            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.status_code, 302)
+            self.assertRedirects(response, reverse('pricing'))
 

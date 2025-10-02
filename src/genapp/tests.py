@@ -1,3 +1,4 @@
+import logging
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
@@ -5,6 +6,9 @@ from django.contrib.auth.hashers import make_password
 from hypothesis.extra.django import TestCase as HypothesisTestCase
 from hypothesis import given, strategies as st, settings
 from .views import VALID_CODE
+
+logger = logging.getLogger(__name__)
+logger.info("genapp tests loaded")
 
 class GenappViewsTest(TestCase):
     def setUp(self):
