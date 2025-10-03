@@ -14,4 +14,8 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
 [deploy.pre-deploy]
-commands = ["python src/manage.py test"]
+commands = [
+    "python src/manage.py test",
+    "python -m pip install -r docs/requirements.txt",
+    "python -m sphinx.cmd.build -b html docs docs/_build/html"
+]
