@@ -34,14 +34,25 @@ RUN mkdir -p /code
 # Set the working directory to that same code directory
 WORKDIR /code
 
-# Copy the requirements file into the container
-COPY requirements.txt /tmp/requirements.txt
+# Copy RAV automation files for dependency management
+COPY ./rav.py /code/rav.py
+COPY ./rav.yaml /code/rav.yaml
 
-# copy the project code into the container's working directory
-COPY ./src /code
+# Copy requirements directory with production requirements
+COPY ./src/requirements /code/src/requirements
 
-# Install the Python project requirements
-RUN pip install -r /tmp/requirements.txt
+# Install pip-tools for compiling requirements
+RUN pip install pip-tools pyyaml
+
+# Copy the project code into the container's working directory
+COPY ./src /code/src
+
+# Use RAV to install production dependencies
+# This ensures consistency with local development workflow
+RUN python rav.py install-prod
+
+# Install the Python project requirements (fallback method)
+# RUN pip install -r /code/src/requirements/requirements-prod.txt
 
 ARG DJANGO_SECRET_KEY
 ENV DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
@@ -51,8 +62,8 @@ ENV DJANGO_DEBUG=${DJANGO_DEBUG}
 # database isn't available during build
 # run any other commands that do not need the database
 # such as:
-RUN python manage.py vendor_pull
-RUN python manage.py collectstatic --noinput
+RUN python src/manage.py vendor_pull
+RUN python src/manage.py collectstatic --noinput
 
 # set the Django default project name
 ARG PROJ_NAME="genapp"
@@ -62,7 +73,7 @@ ARG PROJ_NAME="genapp"
 # the container starts and the database is available
 RUN printf "#!/bin/bash\n" > ./paracord_runner.sh && \
     printf "RUN_PORT=\"\${PORT:-8000}\"\n\n" >> ./paracord_runner.sh && \
-    printf "python manage.py migrate --no-input\n" >> ./paracord_runner.sh && \
+    printf "python src/manage.py migrate --no-input\n" >> ./paracord_runner.sh && \
     printf "gunicorn ${PROJ_NAME}.wsgi:application --bind \"0.0.0.0:\$RUN_PORT\"\n" >> ./paracord_runner.sh
 
 # make the bash script executable

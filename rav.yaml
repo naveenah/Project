@@ -1,0 +1,115 @@
+# RAV (Requirements Automation & Virtualization) Configuration
+# Automates dependency management and virtual environment setup
+
+version: "1.0"
+
+# Virtual environment configuration
+venv:
+  name: "venv"
+  python: "python3"
+
+# Requirements files configuration
+requirements:
+  directory: "src/requirements"
+  prod:
+    input: "requirements-prod.in"
+    output: "requirements-prod.txt"
+  dev:
+    input: "requirements-dev.in"
+    output: "requirements-dev.txt"
+
+# Tasks configuration
+tasks:
+  # Compile requirements files
+  compile:
+    description: "Compile all requirements files with pip-tools"
+    steps:
+      - command: "pip-compile --resolver=backtracking {requirements.directory}/{requirements.prod.input} -o {requirements.directory}/{requirements.prod.output}"
+        description: "Compiling production requirements"
+      - command: "pip-compile --resolver=backtracking {requirements.directory}/{requirements.dev.input} -o {requirements.directory}/{requirements.dev.output}"
+        description: "Compiling development requirements"
+
+  # Install production dependencies
+  install-prod:
+    description: "Install production dependencies"
+    steps:
+      - command: "pip install -r {requirements.directory}/{requirements.prod.output}"
+        description: "Installing production packages"
+
+  # Install development dependencies
+  install-dev:
+    description: "Install development dependencies (includes production)"
+    steps:
+      - command: "pip install -r {requirements.directory}/{requirements.prod.output}"
+        description: "Installing production packages"
+      - command: "pip install -r {requirements.directory}/{requirements.dev.output}"
+        description: "Installing development packages"
+
+  # Upgrade all dependencies
+  upgrade:
+    description: "Upgrade all dependencies to latest versions"
+    steps:
+      - command: "pip-compile --upgrade --resolver=backtracking {requirements.directory}/{requirements.prod.input} -o {requirements.directory}/{requirements.prod.output}"
+        description: "Upgrading production requirements"
+      - command: "pip-compile --upgrade --resolver=backtracking {requirements.directory}/{requirements.dev.input} -o {requirements.directory}/{requirements.dev.output}"
+        description: "Upgrading development requirements"
+
+  # Sync environment with requirements
+  sync:
+    description: "Sync environment with production requirements (removes unlisted packages)"
+    steps:
+      - command: "pip-sync {requirements.directory}/{requirements.prod.output}"
+        description: "Syncing environment"
+
+  # Full setup for production
+  setup-prod:
+    description: "Complete production setup: compile and install"
+    steps:
+      - task: "compile"
+      - task: "install-prod"
+
+  # Full setup for development
+  setup-dev:
+    description: "Complete development setup: compile and install"
+    steps:
+      - task: "compile"
+      - task: "install-dev"
+
+  # Create virtual environment
+  create-venv:
+    description: "Create a new virtual environment"
+    steps:
+      - command: "{venv.python} -m venv {venv.name}"
+        description: "Creating virtual environment"
+
+  # Bootstrap: create venv, install pip-tools, compile, and install
+  bootstrap-dev:
+    description: "Bootstrap development environment from scratch"
+    steps:
+      - task: "create-venv"
+      - command: "{venv.name}/bin/pip install --upgrade pip"
+        description: "Upgrading pip"
+      - command: "{venv.name}/bin/pip install pip-tools"
+        description: "Installing pip-tools"
+      - command: "{venv.name}/bin/pip-compile --resolver=backtracking {requirements.directory}/{requirements.prod.input} -o {requirements.directory}/{requirements.prod.output}"
+        description: "Compiling production requirements"
+      - command: "{venv.name}/bin/pip-compile --resolver=backtracking {requirements.directory}/{requirements.dev.input} -o {requirements.directory}/{requirements.dev.output}"
+        description: "Compiling development requirements"
+      - command: "{venv.name}/bin/pip install -r {requirements.directory}/{requirements.prod.output}"
+        description: "Installing production packages"
+      - command: "{venv.name}/bin/pip install -r {requirements.directory}/{requirements.dev.output}"
+        description: "Installing development packages"
+
+  # Bootstrap production environment
+  bootstrap-prod:
+    description: "Bootstrap production environment from scratch"
+    steps:
+      - task: "create-venv"
+      - command: "{venv.name}/bin/pip install --upgrade pip"
+        description: "Upgrading pip"
+      - command: "{venv.name}/bin/pip install pip-tools"
+        description: "Installing pip-tools"
+      - command: "{venv.name}/bin/pip-compile --resolver=backtracking {requirements.directory}/{requirements.prod.input} -o {requirements.directory}/{requirements.prod.output}"
+        description: "Compiling production requirements"
+      - command: "{venv.name}/bin/pip install -r {requirements.directory}/{requirements.prod.output}"
+        description: "Installing production packages"
