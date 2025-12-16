@@ -373,11 +373,56 @@ except Exception as e:
 5. Use production Stripe keys (`sk_live_...`)
 6. Configure PostgreSQL via `DATABASE_URL`
 7. Set strong `DJANGO_SECRET_KEY`
-8. Run `python src/manage.py collectstatic --noinput`
-9. Run migrations: `python src/manage.py migrate`
-10. Configure Redis for Celery (if using async features)
-11. Start Celery workers: `celery -A genapp worker -l info`
-12. Start Celery beat: `celery -A genapp beat -l info`
+8. Install dependencies: `pip install -r src/requirements/requirements-prod.txt`
+9. Download vendor files: `python src/manage.py vendor_pull`
+10. Collect static files: `python src/manage.py collectstatic --noinput`
+11. Run migrations: `python src/manage.py migrate`
+12. Configure Redis for Celery (if using async features)
+13. Start Celery workers: `celery -A genapp worker -l info`
+14. Start Celery beat: `celery -A genapp beat -l info`
+
+### Docker Deployment
+
+The Dockerfile is configured to use RAV for production dependency management:
+
+```dockerfile
+# Copy RAV automation files
+COPY ./rav.py /code/rav.py
+COPY ./rav.yaml /code/rav.yaml
+COPY ./src/requirements /code/src/requirements
+
+# Install pip-tools and PyYAML for RAV
+RUN pip install pip-tools pyyaml
+
+# Use RAV to install production dependencies
+RUN python rav.py install-prod
+```
+
+**Benefits:**
+- Consistent dependency management across development and production
+- Uses same RAV tool for both environments
+- Automatically installs only production packages
+- Ensures requirements are always up-to-date
+
+**Build the Docker image:**
+```bash
+docker build -t django-saas-platform .
+```
+
+**Run the container:**
+```bash
+docker run -p 8000:8000 \
+  -e DJANGO_SECRET_KEY="your-secret-key" \
+  -e DATABASE_URL="postgresql://user:pass@host:5432/db" \
+  -e STRIPE_SECRET_KEY="sk_live_..." \
+  django-saas-platform
+```
+
+**Alternative: Manual requirements installation**
+If you prefer not to use RAV in Docker, uncomment the fallback line in Dockerfile:
+```dockerfile
+RUN pip install -r /code/src/requirements/requirements-prod.txt
+```
 
 ### WSGI/ASGI
 - **WSGI:** `src/genapp/wsgi.py` (for Gunicorn)
@@ -429,8 +474,18 @@ python src/manage.py check
 
 2. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   # Using RAV (recommended for development)
+   python rav.py setup-dev          # Compile + install dev dependencies
+   # Or: python rav.py install-dev   # Install only (if already compiled)
+   
+   # Using Make (alternative)
+   make install-dev
+   
+   # Manual installation
+   pip install -r src/requirements/requirements-prod.txt -r src/requirements/requirements-dev.txt
    ```
+   
+   **Note:** Use `setup-dev` for development, `setup-prod` for production servers.
 
 3. **Run migrations:**
    ```bash
@@ -451,7 +506,102 @@ python src/manage.py check
    - Main site: http://127.0.0.1:8000/
    - Admin panel: http://127.0.0.1:8000/admin/
 
-## Key Dependencies
+## Dependency Management
+
+This project uses **pip-tools** for dependency management with **RAV (Requirements Automation & Virtualization)** for task automation. All requirement files are located in `src/requirements/`:
+
+- **requirements-prod.in** - Production dependencies (source of truth)
+- **requirements-prod.txt** - Compiled production deps with pinned versions (auto-generated)
+- **requirements-dev.in** - Development dependencies (source of truth)
+- **requirements-dev.txt** - Compiled dev dependencies (auto-generated)
+
+### RAV Automation Tool
+
+RAV (`rav.py` + `rav.yaml`) automates dependency management tasks and clearly differentiates between development and production environments.
+
+**Development vs Production:**
+
+| Task | Production | Development |
+|------|-----------|-------------|
+| Install only | `install-prod` | `install-dev` |
+| Compile + Install | `setup-prod` | `setup-dev` |
+| Full bootstrap | `bootstrap-prod` | `bootstrap-dev` |
+
+**Production Environment (Production Server):**
+```bash
+python rav.py install-prod        # Install production dependencies only
+python rav.py setup-prod          # Compile + install production
+python rav.py bootstrap-prod      # Create venv + setup production
+```
+- Installs only `requirements-prod.txt`
+- No testing tools (hypothesis)
+- No pip-tools in final environment
+- Minimal dependencies for production
+
+**Development Environment (Local Machine):**
+```bash
+python rav.py install-dev         # Install dev + production dependencies
+python rav.py setup-dev           # Compile + install both dev and prod
+python rav.py bootstrap-dev       # Create venv + setup development
+```
+- Installs both `requirements-prod.txt` AND `requirements-dev.txt`
+- Includes testing tools (hypothesis)
+- Includes pip-tools for dependency management
+- All tools needed for development
+
+**Common Commands (Both Environments):**
+```bash
+python rav.py --list              # List all available tasks
+python rav.py --help              # Show help information
+python rav.py compile             # Compile both requirements files
+python rav.py upgrade             # Upgrade all dependencies to latest
+python rav.py sync                # Sync environment with requirements
+python rav.py create-venv         # Create a new virtual environment
+```
+
+**Configuration:** All tasks are defined in `rav.yaml` in the project root.
+
+**Example Workflows:**
+```bash
+# Local development setup
+python rav.py bootstrap-dev
+python src/manage.py migrate
+python src/manage.py runserver
+
+# Production deployment
+python rav.py bootstrap-prod
+python src/manage.py migrate
+gunicorn genapp.wsgi:application
+```
+
+### Managing Dependencies
+
+**Add a new dependency:**
+```bash
+# For production
+echo "package-name>=1.0" >> src/requirements/requirements-prod.in
+
+# For development only
+echo "dev-package>=1.0" >> src/requirements/requirements-dev.in
+
+# Recompile
+python rav.py compile
+# Or: make compile
+```
+
+**Update all dependencies:**
+```bash
+python rav.py upgrade
+# Or: make upgrade
+```
+
+**Sync environment with requirements:**
+```bash
+python rav.py sync
+# Or: make sync
+```
+
+### Key Dependencies
 
 - **django>=5.0,<5.2** - Web framework
 - **stripe** - Payment processing
@@ -464,12 +614,14 @@ python src/manage.py check
 - **dj-database-url** - Database URL parsing
 - **python-decouple** - Environment variable management
 - **gunicorn** - WSGI HTTP server for production
+- **pip-tools** - Dependency management (dev only)
 
 ## Important Notes for Copilot
 
 1. **Always use logging instead of print statements**
 2. **Never hardcode secrets - use `config()` from decouple**
-3. **All Stripe operations should go through `helpers/billing.py`**
+3. **Use RAV for dependency management - `python rav.py setup-dev` for development, `python rav.py setup-prod` for production**
+4. **All Stripe operations should go through `helpers/billing.py`**
 4. **Signal handlers should be lightweight - delegate heavy work to tasks**
 5. **Use try/except blocks with specific exceptions when possible**
 6. **Include `exc_info=True` in error logs for full traceback**
