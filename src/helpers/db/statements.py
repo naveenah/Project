@@ -79,6 +79,10 @@ DROP_SCHEMA_TEMPLATE = """
 DROP SCHEMA IF EXISTS {schema_name} CASCADE;
 """
 
+SET_SEARCH_PATH_TEMPLATE = """
+SET search_path TO {schema_name};
+"""
+
 # Protected schemas that should not be dropped
 PROTECTED_SCHEMAS = ['public', 'pg_catalog', 'information_schema', 'pg_toast']
 
@@ -180,6 +184,188 @@ def drop_multiple_schemas(schema_names, cascade=True, force=False):
     for schema_name in schema_names:
         results[schema_name] = drop_schema_if_exists(schema_name, cascade, force)
     return results
+
+
+def set_active_schema(schema_name):
+    """
+    Set the active schema (search_path) for the current database session.
+    
+    This function sets the PostgreSQL search_path to the specified schema,
+    making it the default schema for subsequent queries in the session.
+    
+    Args:
+        schema_name (str): The name of the schema to activate.
+        
+    Returns:
+        bool: True if the operation was successful, False otherwise.
+        
+    Example:
+        >>> set_active_schema('my_app_schema')
+        True
+        
+    Note:
+        The search_path change only affects the current database connection.
+        In Django, this typically affects the current request/thread.
+    """
+    # Validate schema name to prevent SQL injection
+    if not schema_name or not schema_name.replace('_', '').isalnum():
+        logger.error(f"Invalid schema name: {schema_name}")
+        return False
+    
+    # SQL statement to set search_path
+    sql_statement = f"SET search_path TO {schema_name};"
+    
+    try:
+        with connection.cursor() as cursor:
+            # Check if we're using PostgreSQL
+            db_vendor = connection.vendor
+            
+            if db_vendor == 'postgresql':
+                # First check if schema exists
+                if not schema_exists(schema_name):
+                    logger.error(f"Cannot set active schema. Schema '{schema_name}' does not exist.")
+                    return False
+                
+                logger.info(f"Setting active schema to '{schema_name}'...")
+                cursor.execute(sql_statement)
+                logger.info(f"Active schema set to '{schema_name}'.")
+                return True
+            elif db_vendor == 'sqlite':
+                logger.warning(
+                    f"SQLite doesn't support schemas. Cannot set active schema '{schema_name}'."
+                )
+                return True
+            else:
+                logger.warning(
+                    f"Database vendor '{db_vendor}' may not support search_path. "
+                    f"Attempting to set active schema to '{schema_name}'..."
+                )
+                cursor.execute(sql_statement)
+                logger.info(f"Active schema set to '{schema_name}'.")
+                return True
+                
+    except Exception as e:
+        logger.error(
+            f"Error setting active schema to '{schema_name}': {e}",
+            exc_info=True
+        )
+        return False
+
+
+def get_active_schema():
+    """
+    Get the current active schema (search_path) for the database session.
+    
+    Returns:
+        str or None: The current schema name, or None if unable to determine.
+        
+    Example:
+        >>> get_active_schema()
+        'public'
+    """
+    try:
+        with connection.cursor() as cursor:
+            db_vendor = connection.vendor
+            
+            if db_vendor == 'postgresql':
+                cursor.execute("SHOW search_path;")
+                result = cursor.fetchone()
+                if result:
+                    # search_path can be comma-separated, get the first one
+                    search_path = result[0]
+                    # Remove quotes and spaces, get first schema
+                    schema = search_path.split(',')[0].strip().strip('"')
+                    return schema
+                return None
+            elif db_vendor == 'sqlite':
+                logger.info("SQLite doesn't support schemas, returning None")
+                return None
+            else:
+                logger.warning(f"Getting active schema not implemented for {db_vendor}")
+                return None
+                
+    except Exception as e:
+        logger.error(f"Error getting active schema: {e}", exc_info=True)
+        return None
+
+
+def set_search_path(schema_names, include_public=True):
+    """
+    Set the search_path to multiple schemas in priority order.
+    
+    This allows queries to search multiple schemas in the specified order.
+    
+    Args:
+        schema_names (list): List of schema names in priority order.
+        include_public (bool): If True, includes 'public' schema at the end. Default True.
+        
+    Returns:
+        bool: True if the operation was successful, False otherwise.
+        
+    Example:
+        >>> set_search_path(['tenant1', 'shared'])
+        True
+        
+        >>> set_search_path(['app_schema', 'public'], include_public=False)
+        True
+    """
+    if not schema_names:
+        logger.error("No schema names provided for search_path")
+        return False
+    
+    # Validate all schema names
+    for schema_name in schema_names:
+        if not schema_name or not schema_name.replace('_', '').isalnum():
+            logger.error(f"Invalid schema name in list: {schema_name}")
+            return False
+    
+    # Build the search path
+    search_path_list = schema_names.copy()
+    if include_public and 'public' not in search_path_list:
+        search_path_list.append('public')
+    
+    search_path_str = ', '.join(search_path_list)
+    sql_statement = f"SET search_path TO {search_path_str};"
+    
+    try:
+        with connection.cursor() as cursor:
+            db_vendor = connection.vendor
+            
+            if db_vendor == 'postgresql':
+                logger.info(f"Setting search_path to: {search_path_str}")
+                cursor.execute(sql_statement)
+                logger.info(f"Search path set successfully.")
+                return True
+            elif db_vendor == 'sqlite':
+                logger.warning("SQLite doesn't support schemas.")
+                return True
+            else:
+                logger.warning(
+                    f"Search path setting may not be supported for {db_vendor}"
+                )
+                cursor.execute(sql_statement)
+                return True
+                
+    except Exception as e:
+        logger.error(
+            f"Error setting search_path to '{search_path_str}': {e}",
+            exc_info=True
+        )
+        return False
+
+
+def reset_search_path():
+    """
+    Reset the search_path to the default (typically 'public').
+    
+    Returns:
+        bool: True if the operation was successful, False otherwise.
+        
+    Example:
+        >>> reset_search_path()
+        True
+    """
+    return set_active_schema('public')
 
 # Example: Create multiple schemas
 def create_multiple_schemas(schema_names):
