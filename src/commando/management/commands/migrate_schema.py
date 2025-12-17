@@ -16,7 +16,8 @@ from helpers.db.statements import (
     get_active_schema,
     reset_search_path,
     schema_exists,
-    list_schemas
+    list_schemas,
+    PROTECTED_SCHEMAS
 )
 
 logger = logging.getLogger(__name__)
@@ -77,11 +78,199 @@ class Command(BaseCommand):
             type=str,
             help='Run migrations only for the specified app'
         )
+        
+        parser.add_argument(
+            '--all',
+            action='store_true',
+            help='Migrate all schemas including public and sub-schemas'
+        )
+
+    def handle_migrate_all(self, options):
+        """
+        Migrate all schemas in the database.
+        """
+        self.stdout.write(
+            self.style.SUCCESS('\n🚀 Migrating ALL schemas in database\n')
+        )
+        
+        # Get all schemas
+        all_schemas = list_schemas()
+        
+        if not all_schemas:
+            self.stdout.write(
+                self.style.WARNING('⚠️  No schemas found or database does not support schemas.\n')
+            )
+            return
+        
+        # Filter out system schemas we shouldn't migrate
+        system_schemas = ['pg_toast', 'pg_catalog', 'information_schema']
+        schemas_to_migrate = [s for s in all_schemas if s not in system_schemas]
+        
+        if not schemas_to_migrate:
+            self.stdout.write(
+                self.style.WARNING('⚠️  No user schemas found to migrate.\n')
+            )
+            return
+        
+        self.stdout.write(f'📋 Found {len(schemas_to_migrate)} schema(s) to migrate:\n')
+        for schema in schemas_to_migrate:
+            self.stdout.write(f'  • {schema}')
+        self.stdout.write('')
+        
+        # Store original schema
+        original_schema = get_active_schema()
+        
+        # Track results
+        results = {
+            'success': [],
+            'failed': [],
+            'skipped': []
+        }
+        
+        # Migrate each schema
+        for idx, schema_name in enumerate(schemas_to_migrate, 1):
+            self.stdout.write(
+                self.style.SUCCESS(f'\n{"="*60}')
+            )
+            self.stdout.write(
+                self.style.SUCCESS(f'[{idx}/{len(schemas_to_migrate)}] Processing schema: {schema_name}')
+            )
+            self.stdout.write(
+                self.style.SUCCESS(f'{"="*60}\n')
+            )
+            
+            try:
+                # Activate schema
+                self.stdout.write(f'🔄 Activating schema: {schema_name}')
+                success = set_active_schema(schema_name)
+                
+                if not success:
+                    self.stdout.write(
+                        self.style.ERROR(f'  ❌ Failed to activate schema: {schema_name}')
+                    )
+                    results['failed'].append(schema_name)
+                    continue
+                
+                self.stdout.write(
+                    self.style.SUCCESS(f'  ✅ Schema activated: {schema_name}\n')
+                )
+                
+                # Run migrations if not disabled
+                if not options['no_migrate']:
+                    self.stdout.write(f'🔧 Running migrations on schema: {schema_name}\n')
+                    
+                    # Build migrate command options
+                    migrate_options = {
+                        'verbosity': options.get('verbosity', 1),
+                        'interactive': False,
+                    }
+                    
+                    if options['fake']:
+                        migrate_options['fake'] = True
+                        self.stdout.write(
+                            self.style.WARNING('  ⚠️  Running in FAKE mode\n')
+                        )
+                    
+                    if options['app']:
+                        # Migrate specific app
+                        app_label = options['app']
+                        self.stdout.write(f'  Migrating app: {app_label}')
+                        call_command('migrate', app_label, **migrate_options)
+                    else:
+                        # Migrate all apps
+                        call_command('migrate', **migrate_options)
+                    
+                    self.stdout.write(
+                        self.style.SUCCESS(f'\n  ✅ Migrations completed for: {schema_name}')
+                    )
+                else:
+                    self.stdout.write(
+                        self.style.WARNING('  ⚠️  Skipped migrations (--no-migrate flag)')
+                    )
+                
+                results['success'].append(schema_name)
+                
+            except Exception as e:
+                self.stdout.write(
+                    self.style.ERROR(f'\n  ❌ Error processing schema {schema_name}: {e}')
+                )
+                results['failed'].append(schema_name)
+                logger.error(f"Failed to migrate schema {schema_name}: {e}", exc_info=True)
+        
+        # Restore original schema
+        self.stdout.write(
+            self.style.SUCCESS(f'\n{"="*60}')
+        )
+        self.stdout.write('🔙 Restoring original schema...')
+        
+        if original_schema:
+            reset_success = set_active_schema(original_schema)
+            if reset_success:
+                self.stdout.write(
+                    self.style.SUCCESS(f'  ✅ Restored to schema: {original_schema}')
+                )
+            else:
+                self.stdout.write(
+                    self.style.WARNING(f'  ⚠️  Could not restore to original schema: {original_schema}')
+                )
+        else:
+            self.stdout.write(
+                self.style.WARNING('  ⚠️  Original schema unknown, using default')
+            )
+            reset_search_path()
+        
+        # Print summary
+        self.stdout.write(
+            self.style.SUCCESS(f'\n{"="*60}')
+        )
+        self.stdout.write(
+            self.style.SUCCESS('✨ MIGRATION SUMMARY')
+        )
+        self.stdout.write(
+            self.style.SUCCESS(f'{"="*60}\n')
+        )
+        
+        self.stdout.write(f'📊 Total schemas processed: {len(schemas_to_migrate)}')
+        
+        if results['success']:
+            self.stdout.write(
+                self.style.SUCCESS(f'  ✅ Successful: {len(results["success"])}')
+            )
+            for schema in results['success']:
+                self.stdout.write(f'     • {schema}')
+        
+        if results['failed']:
+            self.stdout.write(
+                self.style.ERROR(f'  ❌ Failed: {len(results["failed"])}')
+            )
+            for schema in results['failed']:
+                self.stdout.write(f'     • {schema}')
+        
+        if results['skipped']:
+            self.stdout.write(
+                self.style.WARNING(f'  ⚠️  Skipped: {len(results["skipped"])}')
+            )
+            for schema in results['skipped']:
+                self.stdout.write(f'     • {schema}')
+        
+        self.stdout.write(f'\n  Current schema: {get_active_schema()}')
+        self.stdout.write('')
+        
+        # Exit with error code if any failed
+        if results['failed']:
+            raise CommandError(
+                f"Failed to migrate {len(results['failed'])} schema(s). See output above for details."
+            )
 
     def handle(self, *args, **options):
         """
         Execute the command.
         """
+        # Migrate all schemas
+        if options['all']:
+            self.handle_migrate_all(options)
+            return
+        
         # List schemas
         if options['list']:
             self.stdout.write(self.style.SUCCESS('\n📋 Listing all schemas:'))
