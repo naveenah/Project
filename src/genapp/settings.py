@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from decouple import config
 import sys
+from .installed import (
+    _INSTALLED_APPS,
+    _CUSTOMER_INSTALLED_APPS
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -65,34 +69,8 @@ CSRF_TRUSTED_ORIGINS = [ 'https://*.railway.app' ]
                             
 # Application definition
 
-INSTALLED_APPS = [
-    # Django built-in apps
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    # My apps
-    'commando',
-    'customers',
-    'profiles',
-    'subscriptions',
-    'visits',
-    'checkouts',
-    'landing',
-    # Third party apps
-    'allauth_ui',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.github',
-    'widget_tweaks',
-    'slippers',
-    # Agent Gateway apps
-    'ai_agent_gateway.apps.AgentGatewayConfig',
-    'django_celery_beat',
-]
+INSTALLED_APPS = _INSTALLED_APPS
+CUSTOMER_INSTALLED_APPS = _CUSTOMER_INSTALLED_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

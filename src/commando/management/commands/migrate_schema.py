@@ -10,6 +10,7 @@ import logging
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
+from genapp.installed import _CUSTOMER_INSTALLED_APPS
 from helpers.db.statements import (
     create_schema_if_not_exists,
     set_active_schema,
@@ -177,8 +178,16 @@ class Command(BaseCommand):
                         self.stdout.write(f'  Migrating app: {app_label}')
                         call_command('migrate', app_label, **migrate_options)
                     else:
-                        # Migrate all apps
-                        call_command('migrate', **migrate_options)
+                        # Migrate only customer apps
+                        for app in _CUSTOMER_INSTALLED_APPS:
+                            # Extract app name from dotted path (e.g., 'ai_agent_gateway.apps.AgentGatewayConfig' -> 'ai_agent_gateway')
+                            app_label = app.split('.')[0]
+                            try:
+                                call_command('migrate', app_label, **migrate_options)
+                            except Exception as e:
+                                self.stdout.write(
+                                    self.style.WARNING(f'  ⚠️  Skipped {app_label}: {e}')
+                                )
                     
                     self.stdout.write(
                         self.style.SUCCESS(f'\n  ✅ Migrations completed for: {schema_name}')
@@ -413,8 +422,16 @@ class Command(BaseCommand):
                     self.stdout.write(f"  Running migrations for app: {app_label}")
                     call_command('migrate', app_label, **migrate_options)
                 else:
-                    # Migrate all apps
-                    call_command('migrate', **migrate_options)
+                    # Migrate only customer apps
+                    for app in _CUSTOMER_INSTALLED_APPS:
+                        # Extract app name from dotted path (e.g., 'ai_agent_gateway.apps.AgentGatewayConfig' -> 'ai_agent_gateway')
+                        app_label = app.split('.')[0]
+                        try:
+                            call_command('migrate', app_label, **migrate_options)
+                        except Exception as e:
+                            self.stdout.write(
+                                self.style.WARNING(f'  ⚠️  Skipped {app_label}: {e}')
+                            )
                 
                 self.stdout.write(
                     self.style.SUCCESS(f'\n  ✅ Migrations completed for schema: {schema_name}')
